@@ -170,8 +170,6 @@ pytz==2022.7.1
 pytz-deprecation-shim==0.1.0.post0
 pyviz-comms==2.3.2
 PyWavelets==1.4.1
-pywin32
-pywinpty==2.0.10
 PyYAML==5.4.1
 pyzmq==23.2.1
 QtPy==2.3.1
