@@ -227,7 +227,6 @@ trace-updater==0.0.9.1
 traitlets==5.9.0
 treeinterpreter==0.2.3
 Twisted==22.10.0
-twisted-iocpsupport==1.0.2
 typeguard==2.13.3
 typing_extensions==4.5.0
 tzdata==2022.7
