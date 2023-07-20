@@ -39,7 +39,7 @@ import matplotlib.pyplot as plt
 
 from tkinter import filedialog
 
-from tkinter import *
+#from tkinter import *
 
 import seaborn as sns
 
@@ -113,7 +113,7 @@ import scipy.stats as stats
 
 from sklearn.ensemble import GradientBoostingClassifier
 
-import pickle ### on utilise ce bibliotheque pour sauvegarder notre modél , qui nous servira pour la partie deployement .
+#import pickle ### on utilise ce bibliotheque pour sauvegarder notre modél , qui nous servira pour la partie deployement .
 
 
 
