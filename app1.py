@@ -169,8 +169,6 @@ def main():
     )
 
  
-
-   
     ## Charger le jeu de donnée
     st.write('faire un choix') 
     choix1=st.selectbox('Select  polluant_homogene or polluant_heterogene', ["polluant_homogene","polluant_heterogene"]) 
@@ -238,13 +236,11 @@ def main():
 
 
         if task=="Classification":
-            
             if st.button("Run Modelling"):
                 if choix1=="polluant_homogene":
-                     exo_class= setup_class(data,target=target,index=False,train_size =0.80,normalize = True,normalize_method = 'zscore',remove_multicollinearity = True,log_experiment=True, experiment_name="polluant-homogene"
-                     ,pca =False, pca_method =None,
-                   pca_components =None)
-                if choix1=="polluant_heterogene":    
+                    exo_class= setup_class(data,target=target,index=False,train_size =0.80,normalize = True,normalize_method = 'zscore',remove_multicollinearity = True,log_experiment=True, experiment_name="polluant-homogene"
+                     ,pca =False, pca_method =None,pca_components =None)
+                if choix1=="polluant_heterogene": 
                     exo_class= setup_class(data,target=target,index=False,train_size =0.80,normalize = False,multicollinearity_threshold =0.8,normalize_method = 'zscore',remove_multicollinearity = True,log_experiment=True, experiment_name="polluant-homogene"
                      ,pca =False, pca_method =None,pca_components =None)
 
