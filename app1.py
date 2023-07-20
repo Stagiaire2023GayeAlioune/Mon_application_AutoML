@@ -235,11 +235,14 @@ def main():
                     
 
 
+
+        
         if task=="Classification":
             if st.button("Run Modelling"):
                 if choix1=="polluant_homogene":
                     exo_class= setup_class(data,target=target,index=False,train_size =0.80,normalize = True,normalize_method = 'zscore',remove_multicollinearity = True,log_experiment=True, experiment_name="polluant-homogene"
                      ,pca =False, pca_method =None,pca_components =None)
+                    
                 if choix1=="polluant_heterogene": 
                     exo_class= setup_class(data,target=target,index=False,train_size =0.80,normalize = False,multicollinearity_threshold =0.8,normalize_method = 'zscore',remove_multicollinearity = True,log_experiment=True, experiment_name="polluant-homogene"
                      ,pca =False, pca_method =None,pca_components =None)
@@ -258,7 +261,7 @@ def main():
                     st.write('Les metrics')
                     st.dataframe(pull(), height=200)
                     st.success("Classification model built successfully")
-               if choix=="polluant_heterogene":
+                if choix=="polluant_heterogene":
                     save_model_class(final_model1,"best_class_model1")
                     st.write("notre pipeline",save_model_class(model_class,"best_class_model1"))
                     ### Message de succé si tout ce passe bien
