@@ -171,11 +171,11 @@ def main():
  
 
    
-
     ## Charger le jeu de donnée
-
+    st.write('faire un choix') 
+    choix1=st.selectbox('Select  polluant_homogene or polluant_heterogene', ["polluant_homogene","polluant_heterogene"]) 
     file=st.file_uploader("Upload your dataset in csv format", type=["csv"])
-
+    
     if file is not None: ## pour dire à l'utilisateur , si le fichier importer n'est pas nul alors fait ceci
 
         data=pd.read_csv(file)
@@ -211,7 +211,6 @@ def main():
         ##Pour la regression et la classification
 
         if task=="Regression":
-
             if st.button("Run Modelling"):
                 exo_reg= setup_reg(data,target=target)
                 ## entrainer plusieurs models à la fois
@@ -234,17 +233,10 @@ def main():
                 with open('best_reg_model.pkl','rb') as f:
                     st.download_button('Download Pipeline Model',f,file_name="best_reg_model.pkl")
 
- 
-
-   
-
- 
 
         if task=="Classification":
-
+            
             if st.button("Run Modelling"):
-
-                choix1=st.selectbox('Select  polluant_homogene or polluant_heterogene', ["polluant_homogene","polluant_heterogene"]) 
                 if choix1=="polluant_homogene":
                      exo_class= setup_class(data,target=target,index=False,train_size =0.80,normalize = True,normalize_method = 'zscore',remove_multicollinearity = True,log_experiment=True, experiment_name="polluant-homogene"
                      ,pca =False, pca_method =None,
@@ -267,8 +259,6 @@ def main():
                 st.dataframe(pull(), height=200)
                 
                 st.success("Classification model built successfully")
-
- 
 
                 ## ResuLts
 
