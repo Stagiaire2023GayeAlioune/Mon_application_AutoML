@@ -338,7 +338,7 @@ def main():
 
     ### deploiement de notre model machine learning .
 
-    # Prediction via mmlflow      
+    # Prediction via pipeline      
 
     file_1=st.file_uploader("Upload your dataset à predir  in csv format", type=["csv"])    
     
@@ -380,6 +380,7 @@ def main():
                st.write('la prediction de votre jeux de donner est:')
 
                st.dataframe(prediction.iloc[:,[len(prediction.columns)-2]],height=200)
+               st.download_button(label="Download votre prediction",data=prediction.iloc[:,[len(prediction.columns)-2]] ,file_name='Votre prediction')
 
     else:
 
