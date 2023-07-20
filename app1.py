@@ -214,7 +214,6 @@ def main():
             if st.button("Run Modelling"):
                 exo_reg= setup_reg(data,target=target)
                 ## entrainer plusieurs models à la fois
-                st.dataframe(exo_reg)
                 model_reg=compare_models_reg()
                 ### sauvegarder le model
                 save_model_reg(model_reg,"best_reg_model")
@@ -225,6 +224,9 @@ def main():
                 st.write("Residuals")
                 plot_model_reg(model_reg,plot='residuals',save=True)
                 st.image("Residuals.png") ### Sauvegarder le resultat
+                ### Les erreurs 
+                plot_model_reg(model_reg,plot='error',save=True)
+                st.image("erurs.png")  ### Sauvegarder le resultat
                 ### Variables importantes
                 st.write("Feature importance")
                 plot_model_reg(model_reg,plot='feature',save=True)
