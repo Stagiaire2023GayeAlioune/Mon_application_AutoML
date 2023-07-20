@@ -225,8 +225,8 @@ def main():
                 plot_model_reg(model_reg,plot='residuals',save=True)
                 st.image("Residuals.png") ### Sauvegarder le resultat
                 ### Les erreurs 
-                plot_model_reg(model_reg,plot='error',save=True)
-                st.image("erurs.png")  ### Sauvegarder le resultat
+                #plot_model_reg(model_reg,plot='error',save=True)
+                #st.image("erurs.png")  ### Sauvegarder le resultat
                 ### Variables importantes
                 st.write("Feature importance")
                 plot_model_reg(model_reg,plot='feature',save=True)
@@ -234,6 +234,7 @@ def main():
                 ### Telecharger le pipeline
                 with open('best_reg_model.pkl','rb') as f:
                     st.download_button('Download Pipeline Model',f,file_name="best_reg_model.pkl")
+                    
 
 
         if task=="Classification":
@@ -254,20 +255,23 @@ def main():
                 st.write('Votre meilleur model de classification est ', model_class)
                 ### sauvegarder le model une fois qu'on es satisfait du model
                 final_model1 = finalize_model(model_class)  ### notre pipeline(entrainement du model sur tout les donnée)
-                save_model_class(final_model1,"best_class_model")
-                st.write("notre pipeline",save_model_class(model_class,"best_class_model"))
-                ### Message de succé si tout ce passe bien
-                st.write('Les metrics')
-                st.dataframe(pull(), height=200)
-                
-                st.success("Classification model built successfully")
-
+                if choix=="polluant_homogene":
+                    save_model_class(final_model1,"best_class_model")
+                    st.write("notre pipeline",save_model_class(model_class,"best_class_model"))
+                    ### Message de succé si tout ce passe bien
+                    st.write('Les metrics')
+                    st.dataframe(pull(), height=200)
+                    st.success("Classification model built successfully")
+               if choix=="polluant_heterogene":
+                    save_model_class(final_model1,"best_class_model1")
+                    st.write("notre pipeline",save_model_class(model_class,"best_class_model1"))
+                    ### Message de succé si tout ce passe bien
+                    st.write('Les metrics')
+                    st.dataframe(pull(), height=200)
+                    st.success("Classification model built successfully")     
                 ## ResuLts
-
                 col5, col6,col7,col8=st.columns(4)
-
                 with col5:
-
                     st.write("ROC curve")
 
                     plot_model_class(model_class,save=True)
@@ -289,10 +293,8 @@ def main():
                     st.write("Confusion Matrix")
 
                     plot_model_class(model_class,plot='confusion_matrix',save=True)
-
                     st.image("Confusion Matrix.png")
 
- 
 
                 with col8:
 
@@ -327,30 +329,29 @@ def main():
  
 
                 ## Download the pipeline model
-
-                with open('best_class_model.pkl','rb') as f:
-
-                    st.download_button('Download Pipeline Model',f,file_name="best_class_model.pkl")
-
+                if choix=="polluant_homogene":
+                    with open('best_class_model.pkl','rb') as f:
+                        st.download_button('Download Pipeline Model',f,file_name="best_class_model.pkl")
+                if choix=="polluant_heterogene": 
+                    with open('best_class_model1.pkl','rb') as f:
+                        st.download_button('Download Pipeline Model',f,file_name="best_class_model1.pkl")
     else:
 
         st.image("https://cdn.futura-sciences.com/cdn-cgi/image/width=1280,quality=60,format=auto/sources/images/data_science_1.jpg")                    
-
-
 
     ### deploiement de notre model machine learning .
 
     # Prediction via mmlflow      
 
     file_1=st.file_uploader("Upload your dataset à predir  in csv format", type=["csv"])    
-
+    
     if file_1 is not None: ## pour dire à l'utilisateur , si le fichier importer n'est pas nul alors fait ceci
 
             data1=pd.read_csv(file_1)
 
             n=len(data1.columns)
 
-            data2=data1[data1.columns[0:(n-1)]]    
+            data2=data1
 
             st.write('les données que vous voulez predire est:',data2)  
 
@@ -363,8 +364,11 @@ def main():
             #st.write('le model enregidtrer sur mlflow est',loaded_model)
 
  
-
-            loaded_model=load_model('best_class_model')
+            if choix=="polluant_homogene":
+                   loaded_model=load_model('best_class_model')
+            if choix=="polluant_heterogene":
+                   loaded_model=load_model('best_class_model1')
+                
 
             ### Affichage des resultats de la predition
 
@@ -378,9 +382,7 @@ def main():
 
                st.write('la prediction de votre jeux de donner est:')
 
-               st.dataframe(prediction.iloc[:,[len(prediction.columns)-2,len(prediction.columns)-1]],height=200)
-
- 
+               st.dataframe(prediction.iloc[:,[len(prediction.columns)-2]],height=200)
 
     else:
 
