@@ -148,9 +148,9 @@ def main():
     #st.sidebar.write("[Author : Gaye Alioune](%)" % url)
 
     st.sidebar.markdown(
-         # **<center><font color='blue'> This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R :</font></center>**
+         " **This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R **;\n"
         
-        "1.**<center><font color='blue'> Load your dataset file (CSV file) :</font></center>**;\n"
+        "1.Load your dataset file (CSV file) ;\n"
 
         "2.Click on *profile Dataset* button in order to generate the pandas profiling of the dataset;\n"
 
@@ -213,45 +213,25 @@ def main():
         if task=="Regression":
 
             if st.button("Run Modelling"):
-
                 exo_reg= setup_reg(data,target=target)
-
                 ## entrainer plusieurs models à la fois
-
                 st.dataframe(exo_reg)
-
                 model_reg=compare_models_reg()
-
                 ### sauvegarder le model
-
                 save_model_reg(model_reg,"best_reg_model")
-
                 ### Message de succé si tout ce passe bien
-
                 st.success("Regression model built successfully")
-
                 ## Results
-
                 ### les residus
-
                 st.write("Residuals")
-
                 plot_model_reg(model_reg,plot='residuals',save=True)
-
                 st.image("Residuals.png") ### Sauvegarder le resultat
-
                 ### Variables importantes
-
                 st.write("Feature importance")
-
                 plot_model_reg(model_reg,plot='feature',save=True)
-
                 st.image("Feature Importance.png")
-
                 ### Telecharger le pipeline
-
                 with open('best_reg_model.pkl','rb') as f:
-
                     st.download_button('Download Pipeline Model',f,file_name="best_reg_model.pkl")
 
  
@@ -264,38 +244,28 @@ def main():
 
             if st.button("Run Modelling"):
 
-                exo_class= setup_class(data,target=target,index=False,train_size =0.80,normalize = True,normalize_method = 'zscore',remove_multicollinearity = True,log_experiment=True, experiment_name="polluant-homogene"
-
-                   ,pca =False, pca_method =None,
-
+                choix1=st.selectbox('Select  polluant_homogene or polluant_heterogene', ["polluant_homogene","polluant_heterogene"]) 
+                if choix1=="polluant_homogene":
+                     exo_class= setup_class(data,target=target,index=False,train_size =0.80,normalize = True,normalize_method = 'zscore',remove_multicollinearity = True,log_experiment=True, experiment_name="polluant-homogene"
+                     ,pca =False, pca_method =None,
                    pca_components =None)
+                if choix1=="polluant_heterogene":    
+                    exo_class= setup_class(data,target=target,index=False,train_size =0.80,normalize = False,multicollinearity_threshold =0.8,normalize_method = 'zscore',remove_multicollinearity = True,log_experiment=True, experiment_name="polluant-homogene"
+                     ,pca =False, pca_method =None,pca_components =None)
 
                 st.write('les caracteristiques de notre setup')
-
                 ## entrainer plusieurs models à la fois
-
                 model_class=compare_models_class()
-
                 tuned_model_class = tune_model(model_class)
-
                 st.write('Votre meilleur model de classification est ', model_class)
-
                 ### sauvegarder le model une fois qu'on es satisfait du model
-
                 final_model1 = finalize_model(model_class)  ### notre pipeline(entrainement du model sur tout les donnée)
-
                 save_model_class(final_model1,"best_class_model")
-
                 st.write("notre pipeline",save_model_class(model_class,"best_class_model"))
-
                 ### Message de succé si tout ce passe bien
-
                 st.write('Les metrics')
-
                 st.dataframe(pull(), height=200)
-
- 
-
+                
                 st.success("Classification model built successfully")
 
  
