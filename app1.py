@@ -148,22 +148,21 @@ def main():
     #st.sidebar.write("[Author : Gaye Alioune](%)" % url)
 
     st.sidebar.markdown(
-
-        "**This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R**"
-
-        "1.Load your dataset file (CSV file);\n"
+         "**<center><font color='blue'> This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R :</font></center>**;\n"
+        
+        "1.**<center><font color='blue'> Load your dataset file (CSV file) :</font></center>**;\n"
 
         "2.Click on *profile Dataset* button in order to generate the pandas profiling of the dataset;\n"
 
         "3. Choose your target column ;\n"
 
-        "4.Choose the machine learning task (Regression or Classification);\n"
+        "4.Choose the machine learning task (Regression or Classification).\n"
 
         "5.Click on *Run Modeling * in order to start the training process.\n"
 
-        "When the model is built , you can view the results like the pipeline model , Residuals plot , Roc Curve, confusion Matrix ..."
+        "When the model is built , you can view the results like the pipeline model , Residuals plot , Roc Curve, confusion Matrix ...\n"
 
-        "\n6. Download the Pipeline model in your local computer."
+        "6. Download the Pipeline model in your local computer.\n"
 
  
 
@@ -172,8 +171,6 @@ def main():
  
 
    
-
- 
 
     ## Charger le jeu de donnée
 
