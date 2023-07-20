@@ -380,10 +380,10 @@ def main():
                st.write('la prediction de votre jeux de donner est:')
 
                st.dataframe(prediction.iloc[:,[len(prediction.columns)-2]],height=200)
-                @st.experimental_memo
-                def convert_df(df):
-                    return df.to_csv(index=False).encode('utf-8')
-                csv = convert_df(dataframe(prediction.iloc[:,[len(prediction.columns)-2]],height=200))
+               @st.experimental_memo
+               def convert_df(df):
+                   return df.to_csv(index=False).encode('utf-8')
+               csv = convert_df(dataframe(prediction.iloc[:,[len(prediction.columns)-2]],height=200))
                st.download_button(label="Download votre prediction",data=csv ,file_name='Votre prediction',key='download-csv')
 
     else:
