@@ -254,14 +254,14 @@ def main():
                 st.write('Votre meilleur model de classification est ', model_class)
                 ### sauvegarder le model une fois qu'on es satisfait du model
                 final_model1 = finalize_model(model_class)  ### notre pipeline(entrainement du model sur tout les donnée)
-                if choix=="polluant_homogene":
+                if choix1=="polluant_homogene":
                     save_model_class(final_model1,"best_class_model")
                     st.write("notre pipeline",save_model_class(model_class,"best_class_model"))
                     ### Message de succé si tout ce passe bien
                     st.write('Les metrics')
                     st.dataframe(pull(), height=200)
                     st.success("Classification model built successfully")
-                if choix=="polluant_heterogene":
+                if choix1=="polluant_heterogene":
                     save_model_class(final_model1,"best_class_model1")
                     st.write("notre pipeline",save_model_class(model_class,"best_class_model1"))
                     ### Message de succé si tout ce passe bien
@@ -272,9 +272,7 @@ def main():
                 col5, col6,col7,col8=st.columns(4)
                 with col5:
                     st.write("ROC curve")
-
                     plot_model_class(model_class,save=True)
-
                     st.image("AUC.png")
 
  
@@ -328,10 +326,10 @@ def main():
  
 
                 ## Download the pipeline model
-                if choix=="polluant_homogene":
+                if choix1=="polluant_homogene":
                     with open('best_class_model.pkl','rb') as f:
                         st.download_button('Download Pipeline Model',f,file_name="best_class_model.pkl")
-                if choix=="polluant_heterogene": 
+                if choix1=="polluant_heterogene": 
                     with open('best_class_model1.pkl','rb') as f:
                         st.download_button('Download Pipeline Model',f,file_name="best_class_model1.pkl")
     else:
@@ -363,9 +361,9 @@ def main():
             #st.write('le model enregidtrer sur mlflow est',loaded_model)
 
  
-            if choix=="polluant_homogene":
+            if choix1=="polluant_homogene":
                    loaded_model=load_model('best_class_model')
-            if choix=="polluant_heterogene":
+            if choix1=="polluant_heterogene":
                    loaded_model=load_model('best_class_model1')
                 
 
