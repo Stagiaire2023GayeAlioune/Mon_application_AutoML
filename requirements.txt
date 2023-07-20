@@ -1,3 +1,4 @@
+pip
 aionotify==0.2.0
 alembic==1.11.1
 altair==5.0.1
@@ -169,7 +170,6 @@ pytz==2022.7.1
 pytz-deprecation-shim==0.1.0.post0
 pyviz-comms==2.3.2
 PyWavelets==1.4.1
-pip
 pywin32
 pywinpty==2.0.10
 PyYAML==5.4.1
