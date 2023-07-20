@@ -148,7 +148,7 @@ def main():
     #st.sidebar.write("[Author : Gaye Alioune](%)" % url)
 
     st.sidebar.markdown(
-         "**<center><font color='blue'> This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R :</font></center>**;\n"
+         # **<center><font color='blue'> This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R :</font></center>**
         
         "1.**<center><font color='blue'> Load your dataset file (CSV file) :</font></center>**;\n"
 
