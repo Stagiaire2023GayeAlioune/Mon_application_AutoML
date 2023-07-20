@@ -380,7 +380,7 @@ def main():
                st.write('la prediction de votre jeux de donner est:')
 
                st.dataframe(prediction.iloc[:,[len(prediction.columns)-2]],height=200)
-               st.download_button(label="Download votre prediction",data=prediction.iloc[:,[len(prediction.columns)-2]] ,file_name='Votre prediction')
+               st.download_button(label="Download votre prediction",data=dataframe(prediction.iloc[:,[len(prediction.columns)-2]],heignt=200) ,file_name='Votre prediction')
 
     else:
 
