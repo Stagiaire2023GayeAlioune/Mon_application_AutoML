@@ -384,7 +384,7 @@ def main():
     else:
 
         st.image("https://cdn.futura-sciences.com/cdn-cgi/image/width=1280,quality=60,format=auto/sources/images/data_science_1.jpg")    
-if __main__=='__main__':
+if __name__=='__main__':
     main()
                                  
 
