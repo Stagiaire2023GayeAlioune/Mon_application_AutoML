@@ -219,7 +219,6 @@ def main():
                     
 
         
-        
         if task=="Classification":
             if st.button("Run Modelling"):
                 if choix1=="polluant_homogene":
@@ -259,10 +258,10 @@ def main():
                     st.image("AUC.png")
 
  
-                with col6:
+                #with col6:
 
-                    plot_model_class(tuned_model_class,plot='class_report',display_format='streamlit')
-                    st.image("Class_repport.png")
+                    #plot_model_class(tuned_model_class,plot='class_report',display_format='streamlit')
+                    #st.image("Class_repport.png")
 
  
                 with col7:
