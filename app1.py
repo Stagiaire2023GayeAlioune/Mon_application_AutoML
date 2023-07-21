@@ -122,7 +122,7 @@ from sklearn.ensemble import GradientBoostingClassifier
 
 
 
-url="https://www.linkedin.com/in/alioune-gaye-1a5161172/"
+#url="https://www.linkedin.com/in/alioune-gaye-1a5161172/"
 
 
 
@@ -147,7 +147,7 @@ def main():
 
     st.title('Alioune Gaye : mon appplication AutoML')
 
-    st.sidebar.write("[Author : Gaye Alioune](%)" % url)
+    #st.sidebar.write("[Author : Gaye Alioune](%)" % url)
 
     st.sidebar.markdown(
         
