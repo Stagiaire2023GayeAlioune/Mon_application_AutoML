@@ -366,7 +366,7 @@ def main():
     #st.markdown(La partie Quatification, unsafe_allow_html=False, *, help=None)     
     st.title(':blue[La partie Quatification. ] ')
     quant=st.selectbox('Selectionner la methode de quatification utilisée: ', ["quatif_un_pol","quatif_double_pol"] 
-    if quant=='quatif_un_pol':
+    #if quant=='quatif_un_pol':
          #### on met le code pour la partie quantification d'un polluant puis on affichedera les courbes obtenues , la valeurs de la concentration du polluant obtenue 
          ## la fonction d'ajustement , y_intercept , x_intercept , delta_x ,    
                        
