@@ -362,8 +362,8 @@ def main():
     else:
 
         st.image("https://cdn.futura-sciences.com/cdn-cgi/image/width=1280,quality=60,format=auto/sources/images/data_science_1.jpg")    
-    #st.markdown(":blue [This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R. ] \n")    
-    st.markdown(La partie Quatification, unsafe_allow_html=False, *, help=None)     
+    st.markdown(":blue[La partie Quatification. ] \n")    
+    #st.markdown(La partie Quatification, unsafe_allow_html=False, *, help=None)     
 if __name__=='__main__':
     main()
                                  
