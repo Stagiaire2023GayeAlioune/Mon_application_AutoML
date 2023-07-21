@@ -260,7 +260,7 @@ def main():
  
                 with col6:
 
-                    plot_model_class(model_class,plot='class_report',display_format='streamlit',save=True)
+                    plot_model_class(tuned_model_class,plot='class_report',display_format='streamlit',save=True)
                     st.image("Class_repport.png")
 
  
@@ -290,13 +290,9 @@ def main():
                     st.image("Boundary.png")
 
  
-
                 ###prediction avec les données de test
-
                 st.write("La prediction du model avec les données de test")    
-
                 prediction=predict_model(final_model1)
-
                 st.dataframe(prediction,height=200)
 
  
