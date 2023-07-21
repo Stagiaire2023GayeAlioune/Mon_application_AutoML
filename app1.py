@@ -126,7 +126,6 @@ url="https://www.linkedin.com/in/alioune-gaye-1a5161172/"
 
 
 
-
 ### faire un catching (garder en memoire tout ce qui est deja calculer)
 
 @st.cache
@@ -141,7 +140,6 @@ def load_data(file):
 
 ### la fonction principale ...
 
- 
 
 def main():
 
@@ -153,7 +151,7 @@ def main():
 
     st.sidebar.markdown(
         
-        st.markdown(":green[$\This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R :\n")
+        ":green[$\This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R :\n"
         
         "1.Load your dataset file (CSV file) ;\n"
 
