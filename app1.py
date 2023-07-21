@@ -118,19 +118,11 @@ from sklearn.ensemble import GradientBoostingClassifier
 
 #import pickle ### on utilise ce bibliotheque pour sauvegarder notre modél , qui nous servira pour la partie deployement .
 
-
-
-
-
 #url="https://www.linkedin.com/in/alioune-gaye-1a5161172/"
-
-
 
 ### faire un catching (garder en memoire tout ce qui est deja calculer)
 
 @st.cache
-
-
 
 def load_data(file):
 
@@ -149,6 +141,14 @@ def main():
 
     #st.sidebar.write("[Author : Gaye Alioune](%)" % url)
     st.sidebar.markdown(":green[This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R. ] \n")
+    #"**This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R**"
+        #"1.Load your dataset file (CSV file);\n"
+        #"2.Click on *profile Dataset* button in order to generate the pandas profiling of the dataset;\n"
+        #"3. Choose your target column ;\n"
+        #"4.Choose the machine learning task (Regression or Classification);\n"
+        #"5.Click on *Run Modeling * in order to start the training process.\n"
+        #"When the model is built , you can view the results like the pipeline model , Residuals plot , Roc Curve, confusion Matrix ..."
+        #"\n6. Download the Pipeline model in your local computer.")
  
     ## Charger le jeu de donnée
     st.write('faire un choix') 
