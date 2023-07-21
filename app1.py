@@ -226,7 +226,7 @@ def main():
                      ,pca =False, pca_method =None,pca_components =None)
                     
                 if choix1=="polluant_heterogene": 
-                    exo_class= setup_class(data,target=target,index=False,train_size =0.80,normalize = False,multicollinearity_threshold =0.8,normalize_method = 'zscore',remove_multicollinearity = True,log_experiment=True, experiment_name="polluant-homogene"
+                    exo_class= setup_class(data,target=target,index=False,train_size =0.80,normalize = False,multicollinearity_threshold =0.8,normalize_method = 'zscore',remove_multicollinearity = True,log_experiment=True, experiment_name="polluant-heterogene"
                      ,pca =False, pca_method =None,pca_components =None)
 
                 st.write('les caracteristiques de notre setup')
@@ -365,6 +365,14 @@ def main():
     #st.markdown(":blue[La partie Quatification. ] \n")    
     #st.markdown(La partie Quatification, unsafe_allow_html=False, *, help=None)     
     st.title(':blue[La partie Quatification. ] ')
+    quant=st.selectbox('Selectionner la methode de quatification utilisée: ', ["quatif_un_pol","quatif_double_pol"] 
+    if quant=='quatif_un_pol':
+         #### on met le code pour la partie quantification d'un polluant puis on affichedera les courbes obtenues , la valeurs de la concentration du polluant obtenue 
+         ## la fonction d'ajustement , y_intercept , x_intercept , delta_x ,    
+                       
+                       
+                       
+    
 if __name__=='__main__':
     main()
                                  
