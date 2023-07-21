@@ -150,7 +150,8 @@ def main():
         #"5.Click on *Run Modeling * in order to start the training process.\n"
         #"When the model is built , you can view the results like the pipeline model , Residuals plot , Roc Curve, confusion Matrix ..."
         #"\n6. Download the Pipeline model in your local computer.")
- 
+
+    
     ## Charger le jeu de donnée
     st.write('faire un choix') 
     choix1=st.selectbox('Select  polluant_homogene or polluant_heterogene', ["polluant_homogene","polluant_heterogene"]) 
@@ -260,7 +261,7 @@ def main():
  
                 with col6:
 
-                    plot_model_class(tuned_model_class,plot='class_report',display_format='streamlit',save=True)
+                    plot_model_class(tuned_model_class,plot='class_report',display_format='streamlit')
                     st.image("Class_repport.png")
 
  
