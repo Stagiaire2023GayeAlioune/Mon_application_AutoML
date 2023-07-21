@@ -362,8 +362,9 @@ def main():
     else:
 
         st.image("https://cdn.futura-sciences.com/cdn-cgi/image/width=1280,quality=60,format=auto/sources/images/data_science_1.jpg")    
-    st.markdown(":blue[La partie Quatification. ] \n")    
+    #st.markdown(":blue[La partie Quatification. ] \n")    
     #st.markdown(La partie Quatification, unsafe_allow_html=False, *, help=None)     
+    st.title(':blue[La partie Quatification. ] ')
 if __name__=='__main__':
     main()
                                  
