@@ -150,8 +150,9 @@ def main():
     #st.sidebar.write("[Author : Gaye Alioune](%)" % url)
 
     st.sidebar.markdown(
+        st.markdown(":green[$\sqrt{x^2+y^2}=1$] is a Pythagorean identity. :pencil:")
         
-        ":green[$\This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R :\n"
+        ":green[This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R. ] \n"
         
         "1.Load your dataset file (CSV file) ;\n"
 
