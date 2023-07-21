@@ -153,7 +153,7 @@ def main():
 
     st.sidebar.markdown(
         
-         st.markdown(":green[$\This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R :")
+        st.markdown(":green[$\This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R :\n")
         
         "1.Load your dataset file (CSV file) ;\n"
 
