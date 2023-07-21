@@ -148,30 +148,7 @@ def main():
     st.title('Alioune Gaye : mon appplication AutoML')
 
     #st.sidebar.write("[Author : Gaye Alioune](%)" % url)
-
-    st.sidebar.markdown(
-        st.markdown(":green[$\sqrt{x^2+y^2}=1$] is a Pythagorean identity. :pencil:")
-        
-        ":green[This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R. ] \n"
-        
-        "1.Load your dataset file (CSV file) ;\n"
-
-        "2.Click on *profile Dataset* button in order to generate the pandas profiling of the dataset;\n"
-
-        "3. Choose your target column ;\n"
-
-        "4.Choose the machine learning task (Regression or Classification).\n"
-
-        "5.Click on *Run Modeling * in order to start the training process.\n"
-
-        "When the model is built , you can view the results like the pipeline model , Residuals plot , Roc Curve, confusion Matrix ...\n"
-
-        "6. Download the Pipeline model in your local computer.\n"
-
- 
-
-    )
-
+    st.sidebar.markdown(":green[This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R. ] \n")
  
     ## Charger le jeu de donnée
     st.write('faire un choix') 
