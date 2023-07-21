@@ -9,6 +9,7 @@ import pandas_profiling
 
 
 
+
 from streamlit_pandas_profiling import st_profile_report
 
 from pycaret.regression import setup as setup_reg
@@ -22,6 +23,7 @@ from pycaret.regression import plot_model as plot_model_reg
 
 
 
+
 from pycaret.classification import setup as setup_class
 
 from pycaret.classification import compare_models as compare_models_class
@@ -31,6 +33,7 @@ from pycaret.classification import save_model as save_model_class
 from pycaret.classification import plot_model as plot_model_class
 
 import mlflow
+
 
 
 
@@ -118,7 +121,8 @@ from sklearn.ensemble import GradientBoostingClassifier
 
 
 
-#url="https://www.linkedin.com/in/alioune-gaye-1a5161172/"
+
+url="https://www.linkedin.com/in/alioune-gaye-1a5161172/"
 
 
 
@@ -145,10 +149,11 @@ def main():
 
     st.title('Alioune Gaye : mon appplication AutoML')
 
-    #st.sidebar.write("[Author : Gaye Alioune](%)" % url)
+    st.sidebar.write("[Author : Gaye Alioune](%)" % url)
 
     st.sidebar.markdown(
-         " **This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R **;\n"
+        
+         st.markdown(":green[$\This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R :")
         
         "1.Load your dataset file (CSV file) ;\n"
 
