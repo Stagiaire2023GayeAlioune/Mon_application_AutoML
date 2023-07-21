@@ -284,12 +284,13 @@ def main():
 
                 col9,col10 =st.columns(2)
 
-                with col9:
-                    st.write("Boundary")
-                    plot_model_class(tuned_model_class,plot='boundary',display_format='streamlit',save=True)
-                    st.image("Boundary.png")
+                #with col9:
+                    #st.write("Boundary")
+                    #plot_model_class(tuned_model_class,plot='boundary',display_format='streamlit',save=True)
+                    #st.image("Boundary.png")
 
- 
+
+                
                 ###prediction avec les données de test
                 st.write("La prediction du model avec les données de test")    
                 prediction=predict_model(final_model1)
