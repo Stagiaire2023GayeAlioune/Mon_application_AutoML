@@ -133,12 +133,12 @@ def load_data(file):
 ### la fonction principale ...
 
 
+
+
 def main():
-
+    
     ## l'entéte de mon code
-
     st.title('Alioune Gaye : mon appplication AutoML')
-
     #st.sidebar.write("[Author : Gaye Alioune](%)" % url)
     st.sidebar.markdown(":green[This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R. ] \n")
     #"**This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R**"
@@ -189,6 +189,7 @@ def main():
 
         ##Pour la regression et la classification
 
+        
         if task=="Regression":
             if st.button("Run Modelling"):
                 exo_reg= setup_reg(data,target=target)
@@ -215,8 +216,7 @@ def main():
                     st.download_button('Download Pipeline Model',f,file_name="best_reg_model.pkl")
                     
 
-
-
+        
         
         if task=="Classification":
             if st.button("Run Modelling"):
@@ -257,15 +257,12 @@ def main():
                     st.image("AUC.png")
 
  
+                with col6:
 
-                #with col6:
-
-                 #   plot_model_class(model_class,plot='class_report',display_format='streamlit',save=True)
-
-                  #  st.image("Class_repport.png")
+                    plot_model_class(model_class,plot='class_report',display_format='streamlit',save=True)
+                    st.image("Class_repport.png")
 
  
-
                 with col7:
 
                     st.write("Confusion Matrix")
@@ -286,13 +283,10 @@ def main():
 
                 col9,col10 =st.columns(2)
 
-                #with col9:
-
-                 #   st.write("Boundary")
-
-                  #  plot_model_class(tuned_model_class,plot='boundary',display_format='streamlit',save=True)
-
-                   # st.image("Boundary.png")
+                with col9:
+                    st.write("Boundary")
+                    plot_model_class(tuned_model_class,plot='boundary',display_format='streamlit',save=True)
+                    st.image("Boundary.png")
 
  
 
@@ -366,6 +360,7 @@ def main():
                    return df.to_csv(index=False).encode('utf-8')
                csv = convert_df(prediction.iloc[:,[len(prediction.columns)-2]])
                st.download_button(label="Download votre prediction",data=csv ,file_name='Votre prediction',key='download-csv')
+                
 
     else:
 
