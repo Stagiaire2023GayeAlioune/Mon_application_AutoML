@@ -24,6 +24,7 @@ from pycaret.regression import plot_model as plot_model_reg
 
 
 
+
 from pycaret.classification import setup as setup_class
 
 from pycaret.classification import compare_models as compare_models_class
