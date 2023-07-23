@@ -1,3 +1,4 @@
+Windows
 beautifulsoup4==4.12.2
 charset_normalizer==2.0.4
 click==8.0.4
