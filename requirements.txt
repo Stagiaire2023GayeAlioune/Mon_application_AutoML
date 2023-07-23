@@ -29,7 +29,7 @@ Pillow==10.0.0
 plex==2.0.0dev
 plotly==5.9.0
 psutil==5.9.0
-py2exe==0.13.0.0
+py2exe==0.12.0.2
 pycaret==3.0.4
 PyGithub==1.59.0
 Pygments==2.15.1
