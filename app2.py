@@ -2,6 +2,7 @@ import streamlit as st
 from PIL import Image, ImageOps
 import ydata_profiling 
 import numpy as np
+
 from streamlit_pandas_profiling import st_profile_report
 import pandas as pd
 from pycaret.regression import setup as setup_reg, compare_models as compare_models_reg , predict_model as predict_model_reg, plot_model as plot_model_reg,create_model as create_model_reg
