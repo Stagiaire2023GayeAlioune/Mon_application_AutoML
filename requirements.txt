@@ -159,6 +159,7 @@ oyaml==1.0
 packaging==23.1
 pandocfilters==1.5.0
 param==1.13.0
+pandas
 parsel==1.7.0
 parso==0.8.3
 patsy==0.5.3
