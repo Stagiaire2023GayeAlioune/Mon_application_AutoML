@@ -114,8 +114,11 @@ def save_reservations_to_file(reservations):
             line = f"{reservation['date']} - {reservation['time']} - {reservation['name']} - {reservation['person_count']} personnes"
             x, y = pdf.get_x(), pdf.get_y()
             pdf.multi_cell(95, 10, line, 1, 'L', fill=True)
+            pdf.set_xy(x + 100, y)  # Move to the right column
         else:
+            x, y = pdf.get_x(), pdf.get_y()
             pdf.multi_cell(95, 10, "", 1, 'L', fill=True)
+            pdf.set_xy(x + 100, y)  # Move to the right column
         
         pdf.ln(10)
     
