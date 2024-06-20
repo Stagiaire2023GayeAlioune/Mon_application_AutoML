@@ -151,7 +151,6 @@ orjson==3.9.1
 oyaml==1.0
 packaging==23.1
 pandas==1.5.3
-pandas-profiling==3.6.6
 pandocfilters==1.5.0
 param==1.13.0
 parsel==1.7.0
@@ -204,8 +203,8 @@ pyserial==3.5
 pysmi==0.3.4
 pysnmp==4.4.12
 pytest==7.3.1
-python-dateutil==2.8.2
-python-utils==3.7.0
+python-dateutil
+python-utils
 pytz==2022.7
 pytz-deprecation-shim==0.1.0.post0
 pyviz-comms==2.3.2
