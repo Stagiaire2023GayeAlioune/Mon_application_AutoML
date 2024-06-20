@@ -52,6 +52,7 @@ def page_sur_place():
     date = st.date_input("Date de réservation", min_value=datetime(2024, 1, 1), max_value=datetime(2024, 12, 31))
     time = st.time_input("Heure")
     person_count = st.number_input("Nombre de personnes", min_value=1)
+    comments = st.text_area("Commentaires")
     
     if st.button("Ajouter la réservation"):
         reservation = {
@@ -60,6 +61,7 @@ def page_sur_place():
             "date": date,
             "time": time,
             "person_count": person_count
+            "comments": comments
         }
         add_reservation(reservation)
         st.success("Réservation ajoutée avec succès !")
