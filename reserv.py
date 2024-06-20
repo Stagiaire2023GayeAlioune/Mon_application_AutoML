@@ -138,7 +138,8 @@ def generate_pdf(reservations):
     return pdf_data
 
 # Sélection de la page
-page = st.sidebar.selectbox("Choisissez une page", ["Commande à Emporter", "Commande sur Place"])
+page = st.sidebar.selectbox("Choisissez le type de reservation", ["Commande à Emporter", "Commande sur Place"])
+st.sidebar.image("https://th.bing.com/th/id/OIP.yP8OOsRFeygNvQFJr7SYJQHaB5?w=328&h=89&c=7&r=0&o=5&dpr=1.5&pid=1.7", use_column_width=True)
 
 if page == "Commande à Emporter":
     page_emporter()
