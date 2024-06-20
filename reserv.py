@@ -60,7 +60,7 @@ def page_sur_place():
             "name": name,
             "date": date,
             "time": time,
-            "person_count": person_count
+            "person_count": person_count,
             "comments": comments
         }
         add_reservation(reservation)
