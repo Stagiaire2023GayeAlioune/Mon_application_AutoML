@@ -1,15 +1,52 @@
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, date, time
 from fpdf import FPDF
 import os
+import json
+
+# Chemin du fichier de sauvegarde des réservations
+SAVE_FILE = "reservations.json"
+
+# Charger les réservations depuis le fichier JSON
+def load_reservations():
+    if os.path.exists(SAVE_FILE):
+        with open(SAVE_FILE, "r") as f:
+            try:
+                reservations = json.load(f)
+                # Convertir les chaînes de caractères en objets date et time
+                for reservation in reservations:
+                    reservation['date'] = datetime.strptime(reservation['date'], "%Y-%m-%d").date()
+                    reservation['time'] = datetime.strptime(reservation['time'], "%H:%M:%S").time()
+                return reservations
+            except json.JSONDecodeError:
+                # Si le fichier est vide ou mal formé, retourner une liste vide
+                return []
+    return []
+
+# Sauvegarder les réservations dans le fichier JSON
+def save_reservations():
+    # Convertir les objets date et time en chaînes de caractères
+    reservations_to_save = [
+        {**reservation, 'date': reservation['date'].strftime("%Y-%m-%d"), 'time': reservation['time'].strftime("%H:%M:%S")}
+        for reservation in st.session_state.reservations
+    ]
+    with open(SAVE_FILE, "w") as f:
+        json.dump(reservations_to_save, f)
 
 # Initialiser les données de réservation
 if 'reservations' not in st.session_state:
-    st.session_state.reservations = []
+    st.session_state.reservations = load_reservations()
 
 # Fonction pour ajouter une réservation
 def add_reservation(reservation):
     st.session_state.reservations.append(reservation)
+    save_reservations()
+    save_reservations_to_file(st.session_state.reservations)
+
+# Fonction pour supprimer une réservation
+def delete_reservation(index):
+    st.session_state.reservations.pop(index)
+    save_reservations()
     save_reservations_to_file(st.session_state.reservations)
 
 # Page de commande à emporter
@@ -35,7 +72,6 @@ def page_emporter():
         }
         add_reservation(reservation)
         st.success("Réservation ajoutée avec succès !")
-        # Générer le PDF après l'ajout de la réservation
         pdf_file = generate_pdf(st.session_state.reservations)
         st.download_button(
             label="Télécharger le PDF des réservations",
@@ -65,7 +101,6 @@ def page_sur_place():
         }
         add_reservation(reservation)
         st.success("Réservation ajoutée avec succès !")
-        # Générer le PDF après l'ajout de la réservation
         pdf_file = generate_pdf(st.session_state.reservations)
         st.download_button(
             label="Télécharger le PDF des réservations",
@@ -137,11 +172,37 @@ def generate_pdf(reservations):
     
     return pdf_data
 
+# Fonction pour afficher les réservations et permettre leur suppression
+def view_reservations():
+    st.title("Visualiser et Supprimer les Réservations")
+    
+    if len(st.session_state.reservations) == 0:
+        st.info("Aucune réservation n'a été effectuée.")
+    else:
+        for index, reservation in enumerate(st.session_state.reservations):
+            if reservation["type"] == "emporter":
+                st.write(f"Emporter - {reservation['date']} {reservation['time']} - {reservation['name']} - {reservation['phone']} - {reservation['pizza_count']} pizzas: {', '.join(reservation['pizzas'])}")
+            else:
+                st.write(f"Sur Place - {reservation['date']} {reservation['time']} - {reservation['name']} - {reservation['person_count']} personnes - {reservation['comments']}")
+            if st.button(f"Supprimer la réservation {index+1}", key=f"delete_{index}"):
+                delete_reservation(index)
+                st.experimental_rerun()
+
+    pdf_file = generate_pdf(st.session_state.reservations)
+    st.download_button(
+        label="Télécharger le PDF des réservations",
+        data=pdf_file,
+        file_name="reservations.pdf",
+        mime="application/pdf"
+    )
+
 # Sélection de la page
-page = st.sidebar.selectbox("Choisissez le type de reservation", ["Commande à Emporter", "Commande sur Place"])
+page = st.sidebar.selectbox("Choisissez le type de reservation", ["Commande à Emporter", "Commande sur Place", "Visualiser les Réservations"])
 st.sidebar.image("casa.PNG")
 
 if page == "Commande à Emporter":
     page_emporter()
 elif page == "Commande sur Place":
     page_sur_place()
+elif page == "Visualiser les Réservations":
+    view_reservations()
