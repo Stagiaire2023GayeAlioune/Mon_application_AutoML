@@ -31,20 +31,27 @@ def load_reservations():
 # Recharger les données au démarrage
 st.session_state.reservations = load_reservations()
 
+# Fonction pour normaliser le numéro de téléphone au format XX XX XX XX XX
+def format_phone_number(phone):
+    phone = ''.join(filter(str.isdigit, phone))
+    if len(phone) == 10:
+        return f"{phone[:2]} {phone[2:4]} {phone[4:6]} {phone[6:8]} {phone[8:]}"
+    return phone
+
 # Fonction pour modifier une réservation
 def modify_reservation(index):
     reservation = st.session_state.reservations[index]
     with st.form(key=f"edit_form_{index}"):
         new_name = st.text_input("Nom", value=reservation["name"])
         new_phone = st.text_input("Numéro de téléphone", value=reservation["phone"])
-        new_date = st.date_input("Date de réservation", value=reservation["date"])
+        new_date = st.date_input("Date de réservation", value=reservation["date"], min_value=datetime(2025, 1, 1), max_value=datetime(2025, 12, 31))
         new_time = st.time_input("Heure", value=reservation["time"])
         new_person_count = st.number_input("Nombre de personnes", min_value=1, value=reservation["person_count"])
         if st.form_submit_button("Enregistrer les modifications"):
             st.session_state.reservations[index] = {
                 "type": "sur place",
                 "name": new_name,
-                "phone": new_phone,
+                "phone": format_phone_number(new_phone),
                 "date": str(new_date),
                 "time": str(new_time),
                 "person_count": new_person_count
@@ -93,7 +100,7 @@ def page_sur_place():
     
     name = st.text_input("Nom")
     phone = st.text_input("Numéro de téléphone")
-    date = st.date_input("Date de réservation", min_value=datetime(2024, 1, 1), max_value=datetime(2024, 12, 31))
+    date = st.date_input("Date de réservation", min_value=datetime(2025, 1, 1), max_value=datetime(2025, 12, 31))
     time = st.time_input("Heure")
     person_count = st.number_input("Nombre de personnes", min_value=1)
     
@@ -101,7 +108,7 @@ def page_sur_place():
         reservation = {
             "type": "sur place",
             "name": name,
-            "phone": phone,
+            "phone": format_phone_number(phone),
             "date": str(date),
             "time": str(time),
             "person_count": person_count
