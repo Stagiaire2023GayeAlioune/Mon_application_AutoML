@@ -1,152 +1,163 @@
 import streamlit as st
-import pandas as pd
-from collections import defaultdict
-import unicodedata
+from datetime import datetime
 from fpdf import FPDF
+import pandas as pd
+import os
 
-# Fonction pour normaliser une chaîne (supprime les accents, met en minuscule, etc.)
-def normalize_string(s):
-    if isinstance(s, str):
-        s = unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode('utf-8').lower()
-    return s
-
-# Fonction pour lire un fichier CSV ou PDF
-def read_file(file):
-    if file.name.endswith(".csv"):
-        df = pd.read_csv(file)
-        return df.iloc[1:]  # Ignorer la première ligne
-    elif file.name.endswith(".pdf"):
-        try:
-            from PyPDF2 import PdfReader
-            reader = PdfReader(file)
-            text = ""
-            for page in reader.pages:
-                text += page.extract_text()
-            # Convertir le texte en DataFrame
-            lines = text.split('\n')
-            data = [line.split() for line in lines if line.strip()]
-            df = pd.DataFrame(data)
-            return df.iloc[1:]  # Ignorer la première ligne
-        except ImportError:
-            st.error("Installez PyPDF2 pour traiter les fichiers PDF.")
-            return None
-    else:
-        st.error("Format de fichier non pris en charge. Veuillez utiliser un fichier CSV ou PDF.")
-        return None
-
-# Fonction pour filtrer les données
-def filter_total_rows(df):
-    # Supprimer les lignes contenant "Total" dans n'importe quelle colonne
-    df_filtered = df[~df.apply(lambda row: row.astype(str).apply(normalize_string).str.contains("total", na=False).any(), axis=1)]
-    return df_filtered
-
-# Fonction pour fusionner les colonnes et renommer
-def process_columns(df):
-    if len(df.columns) < 3:
-        st.error("Le fichier doit contenir au moins trois colonnes.")
-        return None
-    # Fusionner les deux premières colonnes en "Nom"
-    df['Nom'] = df.iloc[:, 0] + " " + df.iloc[:, 1]
-    # Renommer les colonnes
-    df.rename(columns={df.columns[2]: 'Téléphone', df.columns[3]: 'Date'}, inplace=True)
-    # Réorganiser les colonnes
-    df = df[['Nom', 'Téléphone', 'Date']]
-    # Supprimer la première ligne
-    df = df.iloc[1:]
-    return df
-
-# Fonction pour traiter les données
-def process_data(df):
-    if 'Téléphone' not in df.columns:
-        st.error("La colonne 'Téléphone' est introuvable dans le fichier.")
-        return None
-
-    # Normaliser la colonne "Téléphone"
-    df['Téléphone'] = df['Téléphone'].apply(normalize_string)
-
-    phone_counts = defaultdict(int)
-    results = []
-
-    for _, row in df.iterrows():
-        phone = row['Téléphone']
-        if phone not in phone_counts:
-            # Compter le nombre d'occurrences
-            count = df['Téléphone'].value_counts().get(phone, 0)
-            phone_counts[phone] = count
-            results.append({'Nom': row['Nom'], 'Téléphone': phone, 'Nombre': count})
-
-    return pd.DataFrame(results)
-
-# Fonction pour générer un PDF
-def generate_pdf(data):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt="Résultats des Téléphones", ln=True, align="C")
-    
-    # Ajouter les colonnes
-    pdf.set_font("Arial", size=10)
-    pdf.cell(70, 10, "Nom", 1, 0, 'C')
-    pdf.cell(50, 10, "Téléphone", 1, 0, 'C')
-    pdf.cell(30, 10, "Nombre", 1, 1, 'C')
-    
-    # Ajouter les lignes
-    for _, row in data.iterrows():
-        pdf.cell(70, 10, row['Nom'], 1, 0, 'L')
-        pdf.cell(50, 10, row['Téléphone'], 1, 0, 'L')
-        pdf.cell(30, 10, str(row['Nombre']), 1, 1, 'C')
-    
-    # Sauvegarder dans un fichier temporaire
-    pdf_output = "resultats_telephones.pdf"
-    pdf.output(pdf_output)
-    return pdf_output
-
-# Interface utilisateur Streamlit
-st.title("Analyse des Téléphones dans un Fichier")
-
-# Initialiser les réservations dans la session
+# Initialiser les données de réservation
 if 'reservations' not in st.session_state:
     st.session_state.reservations = []
 
-# Demander à l'utilisateur de fournir un fichier
-uploaded_file = st.file_uploader("Chargez un fichier CSV ou PDF", type=["csv", "pdf"])
+# Fonction pour ajouter une réservation
+def add_reservation(reservation):
+    st.session_state.reservations.append(reservation)
+    save_reservations_to_file(st.session_state.reservations)
 
-if uploaded_file:
-    st.write("Fichier chargé avec succès !")
+# Fonction pour sauvegarder les réservations dans un fichier CSV
+def save_reservations_to_file(reservations):
+    df = pd.DataFrame(reservations)
+    df.to_csv("reservations.csv", index=False)
+
+# Fonction pour charger les réservations depuis un fichier
+def load_reservations():
+    if os.path.exists("reservations.csv"):
+        df = pd.read_csv("reservations.csv")
+        # Convertir les colonnes `date` et `time` en types datetime
+        df['date'] = pd.to_datetime(df['date']).dt.date
+        df['time'] = pd.to_datetime(df['time'], format='%H:%M:%S').dt.time
+        return df.sort_values(by=["date", "time"]).to_dict('records')  # Trier par date et heure
+    return []
+
+# Recharger les données au démarrage
+st.session_state.reservations = load_reservations()
+
+# Fonction pour modifier une réservation
+def modify_reservation(index):
+    reservation = st.session_state.reservations[index]
+    with st.form(key=f"edit_form_{index}"):
+        new_name = st.text_input("Nom", value=reservation["name"])
+        new_phone = st.text_input("Numéro de téléphone", value=reservation["phone"])
+        new_date = st.date_input("Date de réservation", value=reservation["date"])
+        new_time = st.time_input("Heure", value=reservation["time"])
+        new_person_count = st.number_input("Nombre de personnes", min_value=1, value=reservation["person_count"])
+        if st.form_submit_button("Enregistrer les modifications"):
+            st.session_state.reservations[index] = {
+                "type": "sur place",
+                "name": new_name,
+                "phone": new_phone,
+                "date": str(new_date),
+                "time": str(new_time),
+                "person_count": new_person_count
+            }
+            save_reservations_to_file(st.session_state.reservations)
+            st.success("Réservation modifiée avec succès !")
+            st.experimental_rerun()
+
+# Fonction pour supprimer une réservation
+def delete_reservation(index):
+    del st.session_state.reservations[index]
+    save_reservations_to_file(st.session_state.reservations)
+    st.success("Réservation supprimée avec succès !")
+    st.experimental_rerun()
+
+# Fonction pour générer un PDF des réservations
+def generate_pdf(reservations):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt="Liste des Réservations", ln=True, align="C")
     
-    # Lecture du fichier
-    df = read_file(uploaded_file)
-    if df is not None:
-        # Filtrer les lignes contenant "Total"
-        df_filtered = filter_total_rows(df)
-        
-        # Modifier les colonnes (fusion et renommage)
-        df_modified = process_columns(df_filtered)
-        if df_modified is not None:
-            st.write("Aperçu des données filtrées et modifiées :")
-            st.write(df_modified)  # Affiche le tableau complet
-            
-            # Traitement des données
-            results = process_data(df_modified)
-            if results is not None:
-                st.write("Résultats :")
-                st.dataframe(results)  # Affiche les résultats sous forme de tableau
-                
-                # Télécharger les résultats en format tableau sans index
-                csv = results.to_csv(index=False, sep=',').encode('utf-8')
-                st.download_button(
-                    label="Télécharger les résultats en CSV",
-                    data=csv,
-                    file_name='resultats_telephones.csv',
-                    mime='text/csv',
-                )
+    pdf.set_font("Arial", size=10)
+    pdf.set_fill_color(200, 200, 200)
+    pdf.cell(40, 10, "Nom", 1, 0, 'C', 1)
+    pdf.cell(50, 10, "Téléphone", 1, 0, 'C', 1)
+    pdf.cell(50, 10, "Date", 1, 0, 'C', 1)
+    pdf.cell(30, 10, "Heure", 1, 0, 'C', 1)
+    pdf.cell(20, 10, "Np", 1, 1, 'C', 1)
+    
+    pdf.set_fill_color(255, 255, 255)
+    for reservation in reservations:
+        pdf.cell(40, 10, reservation['name'], 1, 0, 'C', 1)
+        pdf.cell(50, 10, reservation['phone'], 1, 0, 'C', 1)
+        pdf.cell(50, 10, reservation['date'], 1, 0, 'C', 1)
+        pdf.cell(30, 10, reservation['time'], 1, 0, 'C', 1)
+        pdf.cell(20, 10, str(reservation['person_count']), 1, 1, 'C', 1)
+    
+    pdf_file = "reservations.pdf"
+    pdf.output(pdf_file)
+    return pdf_file
 
-                # Télécharger les résultats en PDF
-                pdf_file = generate_pdf(results)
-                with open(pdf_file, "rb") as file:
-                    st.download_button(
-                        label="Télécharger les résultats en PDF",
-                        data=file,
-                        file_name='resultats_telephones.pdf',
-                        mime='application/pdf',
-                    )
+# Page "Commande sur Place"
+def page_sur_place():
+    st.title("Commande sur Place")
+    
+    name = st.text_input("Nom")
+    phone = st.text_input("Numéro de téléphone")
+    date = st.date_input("Date de réservation", min_value=datetime(2024, 1, 1), max_value=datetime(2024, 12, 31))
+    time = st.time_input("Heure")
+    person_count = st.number_input("Nombre de personnes", min_value=1)
+    
+    if st.button("Ajouter la réservation"):
+        reservation = {
+            "type": "sur place",
+            "name": name,
+            "phone": phone,
+            "date": str(date),
+            "time": str(time),
+            "person_count": person_count
+        }
+        add_reservation(reservation)
+        st.success("Réservation ajoutée avec succès !")
+    
+    st.subheader("Réservations existantes")
+    for i, reservation in enumerate(st.session_state.reservations):
+        col1, col2, col3 = st.columns([4, 1, 1])
+        col1.write(f"{reservation['date']} {reservation['time']} - {reservation['name']} - {reservation['phone']} - {reservation['person_count']} personnes")
+        col2.button("Modifier", key=f"modify_{i}", on_click=modify_reservation, args=(i,))
+        col3.button("Supprimer", key=f"delete_{i}", on_click=delete_reservation, args=(i,))
+    
+    # Générer un PDF des réservations
+    pdf_file = generate_pdf(st.session_state.reservations)
+    with open(pdf_file, "rb") as file:
+        st.download_button(
+            label="Télécharger les réservations en PDF",
+            data=file,
+            file_name=pdf_file,
+            mime="application/pdf"
+        )
+
+# Page "Archives"
+def page_archives():
+    st.title("Archives des Réservations")
+    
+    if os.path.exists("reservations.csv"):
+        df = pd.read_csv("reservations.csv")
+        df['date'] = pd.to_datetime(df['date'])
+        df = df.sort_values(by=["date", "time"])
+        
+        months = df['date'].dt.to_period("M").unique()
+        for month in months:
+            month_df = df[df['date'].dt.to_period("M") == month]
+            st.subheader(f"Réservations pour {month}")
+            st.dataframe(month_df)
+            
+            # Télécharger les réservations en PDF
+            month_pdf = generate_pdf(month_df.to_dict('records'))
+            with open(month_pdf, "rb") as file:
+                st.download_button(
+                    label=f"Télécharger les réservations pour {month}",
+                    data=file,
+                    file_name=f"reservations_{month}.pdf",
+                    mime="application/pdf"
+                )
+    else:
+        st.warning("Aucune réservation enregistrée pour le moment.")
+
+# Navigation entre les pages
+st.sidebar.title("Menu")
+page = st.sidebar.radio("Choisissez une page", ["Commande sur Place", "Archives"])
+
+if page == "Commande sur Place":
+    page_sur_place()
+elif page == "Archives":
+    page_archives()
