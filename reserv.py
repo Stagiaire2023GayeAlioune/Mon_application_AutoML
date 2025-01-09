@@ -14,11 +14,13 @@ def add_reservation(reservation):
     save_reservations_to_file(st.session_state.reservations)
 
 # Fonction pour sauvegarder les réservations dans un fichier CSV
+@st.cache_data
 def save_reservations_to_file(reservations):
     df = pd.DataFrame(reservations)
     df.to_csv("reservations.csv", index=False)
 
 # Fonction pour charger les réservations depuis un fichier
+@st.cache_data
 def load_reservations():
     if os.path.exists("reservations.csv"):
         df = pd.read_csv("reservations.csv")
@@ -28,7 +30,7 @@ def load_reservations():
         return df.sort_values(by=["date", "time"]).to_dict('records')  # Trier par date et heure
     return []
 
-# Recharger les données au démarrage
+# Charger les données au démarrage
 st.session_state.reservations = load_reservations()
 
 # Fonction pour normaliser le numéro de téléphone au format XX XX XX XX XX
@@ -58,14 +60,14 @@ def modify_reservation(index):
             }
             save_reservations_to_file(st.session_state.reservations)
             st.success("Réservation modifiée avec succès !")
-            st.experimental_rerun()
+            st.experimental_set_query_params(refresh="true")  # Mettre à jour la page
 
 # Fonction pour supprimer une réservation
 def delete_reservation(index):
     del st.session_state.reservations[index]
     save_reservations_to_file(st.session_state.reservations)
     st.success("Réservation supprimée avec succès !")
-    st.experimental_rerun()
+    st.experimental_set_query_params(refresh="true")  # Mettre à jour la page
 
 # Fonction pour générer un PDF des réservations
 def generate_pdf(reservations, title="Liste des Réservations"):
