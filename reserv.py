@@ -61,11 +61,11 @@ def delete_reservation(index):
     st.experimental_rerun()
 
 # Fonction pour générer un PDF des réservations
-def generate_pdf(reservations):
+def generate_pdf(reservations, title="Liste des Réservations"):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt="Liste des Réservations", ln=True, align="C")
+    pdf.cell(200, 10, txt=title, ln=True, align="C")
     
     pdf.set_font("Arial", size=10)
     pdf.set_fill_color(200, 200, 200)
@@ -77,10 +77,10 @@ def generate_pdf(reservations):
     
     pdf.set_fill_color(255, 255, 255)
     for reservation in reservations:
-        pdf.cell(40, 10, reservation['name'], 1, 0, 'C', 1)
-        pdf.cell(50, 10, reservation['phone'], 1, 0, 'C', 1)
-        pdf.cell(50, 10, reservation['date'], 1, 0, 'C', 1)
-        pdf.cell(30, 10, reservation['time'], 1, 0, 'C', 1)
+        pdf.cell(40, 10, str(reservation['name']), 1, 0, 'C', 1)
+        pdf.cell(50, 10, str(reservation['phone']), 1, 0, 'C', 1)
+        pdf.cell(50, 10, str(reservation['date']), 1, 0, 'C', 1)
+        pdf.cell(30, 10, str(reservation['time']), 1, 0, 'C', 1)
         pdf.cell(20, 10, str(reservation['person_count']), 1, 1, 'C', 1)
     
     pdf_file = "reservations.pdf"
@@ -142,7 +142,7 @@ def page_archives():
             st.dataframe(month_df)
             
             # Télécharger les réservations en PDF
-            month_pdf = generate_pdf(month_df.to_dict('records'))
+            month_pdf = generate_pdf(month_df.to_dict('records'), title=f"Réservations pour {month}")
             with open(month_pdf, "rb") as file:
                 st.download_button(
                     label=f"Télécharger les réservations pour {month}",
