@@ -21,12 +21,14 @@ def save_reservations_to_file(reservations):
 # Fonction pour charger les réservations depuis un fichier
 def load_reservations():
     if os.path.exists("reservations.csv"):
-        df = pd.read_csv("reservations.csv")
-        # Convertir les colonnes `date` et `time` en types datetime
-        df['date'] = pd.to_datetime(df['date']).dt.date
-        df['time'] = pd.to_datetime(df['time'], format='%H:%M:%S').dt.time
-        return df.sort_values(by=["date", "time"]).to_dict('records')  # Trier par date et heure
-    return []
+        # Vérifier si le fichier n'est pas vide avant de le charger
+        if os.path.getsize("reservations.csv") > 0:
+            df = pd.read_csv("reservations.csv")
+            # Convertir les colonnes `date` et `time` en types datetime
+            df['date'] = pd.to_datetime(df['date']).dt.date
+            df['time'] = pd.to_datetime(df['time'], format='%H:%M:%S').dt.time
+            return df.sort_values(by=["date", "time"]).to_dict('records')  # Trier par date et heure
+    return []  # Retourner une liste vide si le fichier n'existe pas ou est vide
 
 # Recharger les données au démarrage
 st.session_state.reservations = load_reservations()
@@ -169,7 +171,7 @@ if page == "Commande sur Place":
 elif page == "Archives":
     # Demander un code secret pour accéder à la page des archives
     secret_code = st.text_input("Entrez le code secret pour accéder aux archives", type="password")
-    if secret_code == "1962":  # Remplacez "1234" par le code secret souhaité
+    if secret_code == "1962":  # Remplacez "1962" par le code secret souhaité
         page_archives()
     else:
         st.error("Code secret incorrect. Accès refusé.")
