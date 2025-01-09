@@ -160,11 +160,16 @@ def page_archives():
     else:
         st.warning("Aucune réservation enregistrée pour le moment.")
 
-# Navigation entre les pages
+# Navigation entre les pages avec code secret pour les archives
 st.sidebar.title("Menu")
 page = st.sidebar.radio("Choisissez une page", ["Commande sur Place", "Archives"])
 
 if page == "Commande sur Place":
     page_sur_place()
 elif page == "Archives":
-    page_archives()
+    # Demander un code secret pour accéder à la page des archives
+    secret_code = st.text_input("Entrez le code secret pour accéder aux archives", type="password")
+    if secret_code == "1962":  # Remplacez "1234" par le code secret souhaité
+        page_archives()
+    else:
+        st.error("Code secret incorrect. Accès refusé.")
