@@ -3,11 +3,11 @@ import pandas as pd
 import plotly.express as px
 
 # Charger les données
-niveau_education = pd.read_csv("data/EducationLevel.csv")
-donnees_employes = pd.read_csv("data/Employee.csv")
-evaluation_performance = pd.read_csv("data/PerformanceRating.csv")
-niveaux_evaluation = pd.read_csv("data/RatingLevel.csv")
-niveaux_satisfaction = pd.read_csv("data/SatisfiedLevel.csv")
+niveau_education = pd.read_csv("EducationLevel.csv")
+donnees_employes = pd.read_csv("Employee.csv")
+evaluation_performance = pd.read_csv("PerformanceRating.csv")
+niveaux_evaluation = pd.read_csv("RatingLevel.csv")
+niveaux_satisfaction = pd.read_csv("SatisfiedLevel.csv")
 
 # Préparation des données
 donnees_employes['Annee'] = pd.to_datetime(donnees_employes['HireDate']).dt.year
