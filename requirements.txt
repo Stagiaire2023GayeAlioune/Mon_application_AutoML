@@ -9,7 +9,7 @@ sktime>=0.21.0
 ipython
 ipython-genutils==0.2.0
 streamlit==1.41.1
-
+plotly>=5.0.0
 
 
 
