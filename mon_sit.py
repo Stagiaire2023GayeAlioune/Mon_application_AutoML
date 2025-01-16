@@ -191,29 +191,29 @@ elif page == "À propos de moi":
     with col1:
         st.image("python_icon.PNG", use_container_width=True)  # Remplacer par l'image réelle
     with col2:
-        st.image("r_icon.png", use_container_width=True)  # Remplacer par l'image réelle
+        st.image("r_icon.PNG", use_container_width=True)  # Remplacer par l'image réelle
     with col3:
-        st.image("stata_icon.png", use_container_width=True)  # Remplacer par l'image réelle
+        st.image("stata_icon.PNG", use_container_width=True)  # Remplacer par l'image réelle
     with col4:
-        st.image("C++.png", use_container_width=True)  # Remplacer par l'image réelle
+        st.image("C++.PNG", use_container_width=True)  # Remplacer par l'image réelle
     st.markdown("<h2 style='text-align: center; color: #f25287;'>Visualisation</h2>", unsafe_allow_html=True)
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.image("power_bi_icon.png", use_container_width=True)  # Remplacer par l'image réelle
+        st.image("power_bi_icon.PNG", use_container_width=True)  # Remplacer par l'image réelle
     with col2:
-        st.image("excel_icon.png", use_container_width=True)  # Remplacer par l'image réelle
+        st.image("excel_icon.PNG", use_container_width=True)  # Remplacer par l'image réelle
     with col3:
-        st.image("streamlit.png", use_container_width=True)  # Remplacer par l'image réelle
+        st.image("streamlit.PNG", use_container_width=True)  # Remplacer par l'image réelle
     with col4:
-        st.image("shiny.png", use_container_width=True)  # Remplacer par l'image réelle
+        st.image("shiny.PNG", use_container_width=True)  # Remplacer par l'image réelle
 
     # Section "Bases de données"
     st.markdown("<h2 style='text-align: center; color: #f25287;'>Gestion des bases de données</h2>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
-        st.image("mysql_icon.png", use_container_width=True)  # Remplacer par l'image réelle
+        st.image("mysql_icon.PNG", use_container_width=True)  # Remplacer par l'image réelle
     with col2:
-        st.image("sql_server_icon.png", use_container_width=True)  # Remplacer par l'image réelle
+        st.image("sql_server_icon.PNG", use_container_width=True)  # Remplacer par l'image réelle
 
     # Section "Bureautique"
     st.markdown("<h2 style='text-align: center; color: #f25287;'>Bureautique</h2>", unsafe_allow_html=True)
