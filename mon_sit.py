@@ -189,7 +189,7 @@ elif page == "À propos de moi":
     st.markdown("<h2 style='text-align: center; color: #f25287;'>Langages de programmations</h2>", unsafe_allow_html=True)
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.image("python_icon.png", use_container_width=True)  # Remplacer par l'image réelle
+        st.image("python_icon.PNG", use_container_width=True)  # Remplacer par l'image réelle
     with col2:
         st.image("r_icon.png", use_container_width=True)  # Remplacer par l'image réelle
     with col3:
