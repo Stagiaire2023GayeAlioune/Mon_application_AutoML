@@ -217,7 +217,7 @@ elif page == "À propos de moi":
 
     # Section "Bureautique"
     st.markdown("<h2 style='text-align: center; color: #f25287;'>Bureautique</h2>", unsafe_allow_html=True)
-    st.image("tableau_icon.png", use_container_width=True)  # Remplacer par l'image réelle
+    st.image("tableau_icon.PNG", use_container_width=True)  # Remplacer par l'image réelle
 
 elif page == "Mes projets":
     st.markdown("<h1 style='text-align: center; color: #333;'>Mes Projets</h1>", unsafe_allow_html=True)
