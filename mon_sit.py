@@ -283,4 +283,18 @@ elif page == "Mes projets":
 
 # Pied de page
 st.markdown("---")
-st.markdown("<p style='text-align: center;'>© 2025 Data Workers. Tous droits réservés.</p>", unsafe_allow_html=True)
+st.markdown("""
+<p style='text-align: center;'>
+    Mes contacts:<br>
+    <a href='https://www.linkedin.com/in/alioune-gaye-1a5161172/' target='_blank' style='margin-right: 15px;'>
+        <img src='https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png' alt='LinkedIn' style='width:20px; vertical-align:middle;'> LinkedIn
+    </a>
+    <a href='tel:+33763556982' style='margin-right: 15px;'>
+        <img src='https://upload.wikimedia.org/wikipedia/commons/6/6c/Phone_icon.png' alt='Phone' style='width:20px; vertical-align:middle;'> 0763556982
+    </a>
+    <a href='mailto:aliounegaye911@gmail.com'>
+        <img src='https://upload.wikimedia.org/wikipedia/commons/2/27/Android_Email_4.4_Icon.png' alt='Email' style='width:20px; vertical-align:middle;'> aliounegaye911@gmail.com
+    </a> <br>
+    © 2025 Data Workers; GAYE ALIOUNE.
+</p>
+""", unsafe_allow_html=True)
