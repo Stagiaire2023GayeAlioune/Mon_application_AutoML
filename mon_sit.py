@@ -232,7 +232,7 @@ elif page == "Mes projets":
             <h3>Détection de la Maladie d'Alzheimer</h3>
             <p>Un projet utilisant des modèles de Deep Learning (VGG19, ResNet50) pour détecter différents stades de démence à partir d'IRM cérébrales.</p>
             <a href="https://risquedecredits-clients.streamlit.app/">Accéder à l'application</a><br>
-            <a href="Detection_Alzheimer_Deep_Learning (1).docx">Télécharger le rapport</a>
+            <a href="https://view.officeapps.live.com/op/view.aspx?src=https%3A%2F%2Fraw.githubusercontent.com%2FStagiaire2023GayeAlioune%2FMon_application_AutoML%2Frefs%2Fheads%2Fmaster%2FDetection_Alzheimer_Deep_Learning.docx&wdOrigin=BROWSELINK">Télécharger le rapport</a>
         </div>
         """, unsafe_allow_html=True)
 
