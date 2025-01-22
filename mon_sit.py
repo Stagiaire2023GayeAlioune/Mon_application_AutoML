@@ -243,7 +243,7 @@ elif page == "Mes projets":
             <h3>Détection du Cancer du Sein</h3>
             <p>Analyse des images échographiques pour classifier les masses mammaires en trois catégories : bénin, malin, et normal.</p>
             <a href="https://example.com/cancer">Accéder à l'application</a><br>
-            <a href="Rapport_Cancer_du_sein.pdf">Télécharger le rapport</a>
+            <a href="https://github.com/Stagiaire2023GayeAlioune/Mon_application_AutoML/blob/master/Rapport_Cancer_du_sein.pdf">Télécharger le rapport</a>
         </div>
         """, unsafe_allow_html=True)
 
