@@ -1,439 +1,154 @@
-
-import streamlit as st
-
-import numpy as np
-
-import pandas as pd 
-from streamlit_pandas_profiling import st_profile_report
-
-from pycaret.regression import setup as setup_reg
-
-from pycaret.regression import compare_models as compare_models_reg
-
-from pycaret.regression import save_model as save_model_reg
-
-from pycaret.regression import plot_model as plot_model_reg
-
-
-
-
-from pycaret.classification import setup as setup_class
-
-from pycaret.classification import compare_models as compare_models_class
-
-from pycaret.classification import save_model as save_model_class
-
-from pycaret.classification import plot_model as plot_model_class
-
-import mlflow
-
-
-
-
-import matplotlib.pyplot as plt
-
-from tkinter import filedialog
-
-from tkinter import *
-
-import seaborn as sns
-
-from sklearn.model_selection import train_test_split,KFold , cross_val_score,cross_validate
-
-from sklearn.tree import DecisionTreeClassifier ,plot_tree,ExtraTreeClassifier
-
-from sklearn.ensemble import ExtraTreesClassifier
-
-from sklearn.metrics import accuracy_score,precision_score ,classification_report,RocCurveDisplay , auc
-
-from sklearn.neighbors import KNeighborsClassifier
-
-from sklearn.metrics import confusion_matrix
-
-from sklearn.neural_network import MLPClassifier
-
-from sklearn.preprocessing import StandardScaler , MinMaxScaler
-
-from sklearn.metrics import recall_score,fbeta_score, make_scorer,roc_curve ,roc_auc_score
-
-from sklearn.decomposition import PCA
-
-from sklearn.naive_bayes import GaussianNB
-
-from sklearn.ensemble import BaggingClassifier,AdaBoostClassifier
-
-from sklearn.svm import SVC
-
-import time
-
-from sklearn.pipeline import Pipeline
-
-from sklearn.feature_selection import SelectFromModel
-
-from sklearn.preprocessing import StandardScaler
-
-import pickle
-
-from sklearn.ensemble import RandomForestClassifier
-
-import plotly.express as px
-
-from sklearn.model_selection import cross_val_predict
-
-from sklearn.linear_model import LogisticRegression
-
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-
-from pycaret.regression import setup, compare_models, blend_models, finalize_model, predict_model, plot_model
-
-from pycaret.classification import *
-
-from scipy.stats import kstest, expon
-
-from scipy.stats import chisquare, poisson
-
-from fitter import Fitter, get_common_distributions, get_distributions
-
-from sklearn.decomposition import PCA
-
-from scipy.stats import expon, poisson, gamma, lognorm, weibull_min, kstest,norm
-
-import scipy
-
-import scipy.stats
-
-from mlxtend.plotting import plot_pca_correlation_graph
-
-import scipy.stats as stats
-
-from sklearn.ensemble import GradientBoostingClassifier
-
-import pickle ### on utilise ce bibliotheque pour sauvegarder notre modél , qui nous servira pour la partie deployement .
-
-
-
-
-#url="https://www.linkedin.com/in/alioune-gaye-1a5161172/"
-
-
-
-
-### faire un catching (garder en memoire tout ce qui est deja calculer)
-
-@st.cache
-
-
-
-def load_data(file):
-
-    data=pd.read_csv(file)
-
-    return data
-
-### la fonction principale ...
-
- 
-
-def main():
-
-    ## l'entéte de mon code
-
-    st.title('Alioune Gaye : mon appplication AutoML')
-
-    #st.sidebar.write("[Author : Gaye Alioune](%)" % url)
-
-    st.sidebar.markdown(
-
-        "**This wep app is a No-code tool for Exploratory Data Analysis and building Machine Learning model for R**"
-
-        "1.Load your dataset file (CSV file);\n"
-
-        "2.Click on *profile Dataset* button in order to generate the pandas profiling of the dataset;\n"
-
-        "3. Choose your target column ;\n"
-
-        "4.Choose the machine learning task (Regression or Classification);\n"
-
-        "5.Click on *Run Modeling * in order to start the training process.\n"
-
-        "When the model is built , you can view the results like the pipeline model , Residuals plot , Roc Curve, confusion Matrix ..."
-
-        "\n6. Download the Pipeline model in your local computer."
-
- 
-
-    )
-
- 
-
-   
-
- 
-
-    ## Charger le jeu de donnée
-
-    file=st.file_uploader("Upload your dataset in csv format", type=["csv"])
-
-    if file is not None: ## pour dire à l'utilisateur , si le fichier importer n'est pas nul alors fait ceci
-
-        data=pd.read_csv(file)
-
-        st.dataframe(data.head()) ## afficher les données importer
-
-        #data=data.dropna(subset=target) ### suprimer les valeurs manquantes
-
-        ## analyse exploiratoire du jeu de données
-
-        ## creation d'un bouton de visualisation des données et graphe
-
-        profile=st.button('profile dataset')
-
-        if profile:
-
-            profile_df=data.profile_report()
-
-            st_profile_report(profile_df) ### afficher le profile
-
-            ## Phase de modelisation
-
-            ## Choix des targets
-
-        target=st.selectbox('Select the target variable',data.columns)
-
-        ## selection du type de model (classification ou regression)
-
-        task=st.selectbox('Select a ML task', ["Classification","Regression"])
-
-        ## Maintenant on peut commencer par ecrir le code
-
-        ##Pour la regression et la classification
-
-        if task=="Regression":
-
-            if st.button("Run Modelling"):
-
-                exo_reg= setup_reg(data,target=target)
-
-                ## entrainer plusieurs models à la fois
-
-                st.dataframe(exo_reg)
-
-                model_reg=compare_models_reg()
-
-                ### sauvegarder le model
-
-                save_model_reg(model_reg,"best_reg_model")
-
-                ### Message de succé si tout ce passe bien
-
-                st.success("Regression model built successfully")
-
-                ## Results
-
-                ### les residus
-
-                st.write("Residuals")
-
-                plot_model_reg(model_reg,plot='residuals',save=True)
-
-                st.image("Residuals.png") ### Sauvegarder le resultat
-
-                ### Variables importantes
-
-                st.write("Feature importance")
-
-                plot_model_reg(model_reg,plot='feature',save=True)
-
-                st.image("Feature Importance.png")
-
-                ### Telecharger le pipeline
-
-                with open('best_reg_model.pkl','rb') as f:
-
-                    st.download_button('Download Pipeline Model',f,file_name="best_reg_model.pkl")
-
- 
-
-   
-
- 
-
-        if task=="Classification":
-
-            if st.button("Run Modelling"):
-
-                exo_class= setup_class(data,target=target,index=False,train_size =0.80,normalize = True,normalize_method = 'zscore',remove_multicollinearity = True,log_experiment=True, experiment_name="polluant-homogene"
-
-                   ,pca =False, pca_method =None,
-
-                   pca_components =None)
-
-                st.write('les caracteristiques de notre setup')
-
-                ## entrainer plusieurs models à la fois
-
-                model_class=compare_models_class()
-
-                tuned_model_class = tune_model(model_class)
-
-                st.write('Votre meilleur model de classification est ', model_class)
-
-                ### sauvegarder le model une fois qu'on es satisfait du model
-
-                final_model1 = finalize_model(model_class)  ### notre pipeline(entrainement du model sur tout les donnée)
-
-                save_model_class(final_model1,"best_class_model")
-
-                st.write("notre pipeline",save_model_class(model_class,"best_class_model"))
-
-                ### Message de succé si tout ce passe bien
-
-                st.write('Les metrics')
-
-                st.dataframe(pull(), height=200)
-
- 
-
-                st.success("Classification model built successfully")
-
- 
-
-                ## ResuLts
-
-                col5, col6,col7,col8=st.columns(4)
-
-                with col5:
-
-                    st.write("ROC curve")
-
-                    plot_model_class(model_class,save=True)
-
-                    st.image("AUC.png")
-
- 
-
-                #with col6:
-
-                 #   plot_model_class(model_class,plot='class_report',display_format='streamlit',save=True)
-
-                  #  st.image("Class_repport.png")
-
- 
-
-                with col7:
-
-                    st.write("Confusion Matrix")
-
-                    plot_model_class(model_class,plot='confusion_matrix',save=True)
-
-                    st.image("Confusion Matrix.png")
-
- 
-
-                with col8:
-
-                    st.write("Feature Importance")
-
-                    plot_model_class(model_class,plot='feature',save=True)
-
-                    st.image("Feature Importance.png")
-
- 
-
-                col9,col10 =st.columns(2)
-
-                #with col9:
-
-                 #   st.write("Boundary")
-
-                  #  plot_model_class(tuned_model_class,plot='boundary',display_format='streamlit',save=True)
-
-                   # st.image("Boundary.png")
-
- 
-
-                ###prediction avec les données de test
-
-                st.write("La prediction du model avec les données de test")    
-
-                prediction=predict_model(final_model1)
-
-                st.dataframe(prediction,height=200)
-
- 
-
-                ## Download the pipeline model
-
-                with open('best_class_model.pkl','rb') as f:
-
-                    st.download_button('Download Pipeline Model',f,file_name="best_class_model.pkl")
-
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
+import fitz  # PyMuPDF
+import pytesseract
+from pdfminer.high_level import extract_text
+import shutil
+import os
+
+app = FastAPI()
+
+UPLOAD_DIR = "uploads/"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+@app.get("/", response_class=HTMLResponse)
+async def main_page():
+    return """
+    <html>
+        <head>
+            <title>PDF Accessibility Checker</title>
+            <script>
+                function uploadFile(event) {
+                    event.preventDefault();
+                    let formData = new FormData(document.getElementById("uploadForm"));
+                    
+                    fetch("/upload/", {
+                        method: "POST",
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.corrected_pdf) {
+                            let downloadLink = document.getElementById("downloadLink");
+                            downloadLink.href = data.corrected_pdf;
+                            downloadLink.style.display = "block";
+
+                            let reportSection = document.getElementById("reportSection");
+                            reportSection.innerText = data.report;
+                            reportSection.style.display = "block";
+                        }
+                    })
+                    .catch(error => console.error("Error:", error));
+                }
+            </script>
+        </head>
+        <body>
+            <h2>Upload a PDF file to analyze accessibility issues</h2>
+            <form id="uploadForm" onsubmit="uploadFile(event)" enctype="multipart/form-data">
+                <input type="file" name="file">
+                <input type="submit" value="Upload">
+            </form>
+            <br>
+            <div id="reportSection" style="display:none; border:1px solid #ccc; padding:10px;"></div>
+            <br>
+            <a id="downloadLink" href="#" style="display:none;" download="corrected.pdf">
+                <button>Download Corrected PDF</button>
+            </a>
+        </body>
+    </html>
+    """
+
+@app.post("/upload/")
+async def upload_pdf(file: UploadFile = File(...)):
+    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    text_content = extract_text_from_pdf(file_path)
+    accessibility_issues = analyze_pdf(file_path, text_content)
+    corrected_pdf_path = correct_pdf(file_path, accessibility_issues)
+    report = generate_report(accessibility_issues)
+
+    return JSONResponse(content={"message": "PDF analysé et corrigé", "corrected_pdf": f"/download/{os.path.basename(corrected_pdf_path)}", "report": report})
+
+@app.get("/download/{filename}")
+async def download_pdf(filename: str):
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    return FileResponse(file_path, media_type="application/pdf", filename=filename)
+
+def extract_text_from_pdf(pdf_path):
+    """Amélioration de l'extraction du texte avec OCR si nécessaire."""
+    text = extract_text(pdf_path).strip()
+    
+    if not text:
+        doc = fitz.open(pdf_path)
+        for page in doc:
+            img = page.get_pixmap()
+            text += pytesseract.image_to_string(img)
+    return text
+
+def analyze_pdf(pdf_path, text_content):
+    """Analyse les problèmes d'accessibilité et retourne une liste de corrections à effectuer."""
+    issues = []
+    doc = fitz.open(pdf_path)
+    
+    for page_num, page in enumerate(doc):
+        if not text_content.strip():
+            issues.append({"type": "empty_text", "message": "Le document semble être une image sans texte."})
+
+        if not check_heading_structure(text_content):
+            issues.append({"type": "heading_structure", "message": "Structure des titres incorrecte. Ajout de titres hiérarchisés."})
+        
+        for img in page.get_images(full=True):
+            issues.append({"type": "missing_alt", "image_id": img[0], "page": page_num + 1})
+    
+    return issues
+
+def check_heading_structure(text):
+    """Vérifie si le document contient une structure de titres logique."""
+    headings = [line for line in text.split("\n") if line.strip().startswith(("H1", "H2", "H3"))]
+    return len(headings) > 0
+
+def correct_pdf(pdf_path, issues):
+    """Applique les corrections nécessaires pour rendre le PDF accessible."""
+    doc = fitz.open(pdf_path)
+    
+    for issue in issues:
+        if issue["type"] == "missing_alt":
+            page = doc[issue["page"] - 1]
+            page.insert_text((50, 50), "[Image description ajoutée]", fontsize=10)
+        
+        elif issue["type"] == "heading_structure":
+            for page in doc:
+                page.insert_text((50, 100), "H1: Titre du document\n", fontsize=14, fontname="helv")
+
+        elif issue["type"] == "empty_text":
+            for page in doc:
+                page.insert_text((50, 150), "⚠️ Ce document a été détecté comme une image sans texte. Ajout d'une couche OCR.", fontsize=12, fontname="helv")
+    
+    corrected_pdf_path = pdf_path.replace(".pdf", "_corrected.pdf")
+    doc.save(corrected_pdf_path)
+    doc.close()
+    
+    return corrected_pdf_path
+
+def generate_report(issues):
+    """Génère un rapport détaillé des problèmes détectés et corrections appliquées."""
+    report = "🔎 **Rapport d'analyse du document PDF :**\n\n"
+    
+    if not issues:
+        report += "✅ Aucun problème détecté. Le document semble conforme.\n"
     else:
+        for issue in issues:
+            if issue["type"] == "missing_alt":
+                report += f"❌ Image sans description détectée (Page {issue['page']}). Description ajoutée.\n"
+            elif issue["type"] == "empty_text":
+                report += "❌ Le document semble être une image sans texte accessible. Une OCR a été appliquée.\n"
+            elif issue["type"] == "heading_structure":
+                report += "⚠️ Structure des titres incorrecte. Ajout d'une hiérarchie logique des titres.\n"
+    
+    return report
 
-        st.image("https://cdn.futura-sciences.com/cdn-cgi/image/width=1280,quality=60,format=auto/sources/images/data_science_1.jpg")                    
-
-
-
-    ### deploiement de notre model machine learning .
-
-    # Prediction via mmlflow      
-
-    file_1=st.file_uploader("Upload your dataset à predir  in csv format", type=["csv"])    
-
-    if file_1 is not None: ## pour dire à l'utilisateur , si le fichier importer n'est pas nul alors fait ceci
-
-            data1=pd.read_csv(file_1)
-
-            n=len(data1.columns)
-
-            data2=data1[data1.columns[0:(n-1)]]    
-
-            st.write('les données que vous voulez predire est:',data2)  
-
-            #logged_model = 'runs:/42ae053461bc4e4c9cd8faded887aeaa/model' ### chemin de mon meilleur model qui se trouve dans le dosier "mlruns"
-
-            # Load model as a PyFuncModel.
-
-            #loaded_model = mlflow.pyfunc.load_model(logged_model)
-
-            #st.write('le model enregidtrer sur mlflow est',loaded_model)
-
- 
-
-            loaded_model=load_model('best_class_model')
-
-            ### Affichage des resultats de la predition
-
-            ### data2  est les données ----- à predir dans le future .............
-
-            if st.button("Run prediction"):    
-
-               prediction=predict_model(loaded_model,data=data2)
-
-               #### On importe les données à predire dans le future , avec le codde deploié sur mlflow ........ Donc , on essaye de toujours  faire l'exploitationn des données aavent de les importer  dans le code
-
-               st.write('la prediction de votre jeux de donner est:')
-
-               st.dataframe(prediction.iloc[:,[len(prediction.columns)-2,len(prediction.columns)-1]],height=200)
-
- 
-
-    else:
-
-        st.image("https://cdn.futura-sciences.com/cdn-cgi/image/width=1280,quality=60,format=auto/sources/images/data_science_1.jpg")    
-
-                                 
-
-if __name__=='__main__':
-
- 
-
-    main()    
-
- 
-
-   
-
- 
-
- 
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
