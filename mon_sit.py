@@ -267,7 +267,7 @@ elif page == "Mes projets":
         <div class="project-box">
             <h3>Analyse des Risques de Crédit</h3>
             <p>Développement d'une solution pour évaluer et anticiper les risques de crédit en utilisant des techniques de machine learning.</p>
-            <a href="https://risquedecredits-clients.streamlit.app/">Accéder à l'application</a>
+            <a href="https://risquedecreditsclients.streamlit.app/">Accéder à l'application</a>
         </div>
         """, unsafe_allow_html=True)
 
@@ -277,7 +277,7 @@ elif page == "Mes projets":
         <div class="project-box">
             <h3>Tableau de Bord RH</h3>
             <p>Création d'un tableau de bord interactif pour analyser les données RH, incluant l'attrition, la démographie et la performance.</p>
-            <a href="https://application-tableau-de-bord-analyse-rh-gaye-alioune.streamlit.app/">Accéder à l'application</a>
+            <a href="https://applicationtableaudebordanalyserh.streamlit.app/">Accéder à l'application</a>
         </div>
         """, unsafe_allow_html=True)
 
@@ -298,3 +298,4 @@ st.markdown("""
     © 2025 Data Workers; GAYE ALIOUNE.
 </p>
 """, unsafe_allow_html=True)
+
