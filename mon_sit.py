@@ -1,215 +1,208 @@
 import streamlit as st
-from streamlit_lottie import st_lottie
-import requests
 
 # -----------------------------------------------------
 # CONFIGURATION GLOBALE
 # -----------------------------------------------------
-st.set_page_config(page_title="Data Workers", layout="wide", page_icon="💚")
+st.set_page_config(page_title="Data Workers", page_icon="🧠", layout="wide")
 
 # -----------------------------------------------------
-# STYLE GLOBAL + TRANSITIONS
+# STYLE GLOBAL
 # -----------------------------------------------------
 st.markdown("""
     <style>
-    html, body {font-family: 'Poppins', sans-serif; background-color: #fafafa;}
+    * { font-family: 'Poppins', sans-serif; }
 
-    /* Barre de navigation sticky */
+    /* Barre de navigation */
     .navbar {
-        position: fixed;
-        top: 0; left: 0; width: 100%;
-        background-color: white;
+        background-color: #fff;
         padding: 12px 0;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        z-index: 100;
+        position: fixed;
+        top: 0;
+        width: 100%;
+        z-index: 999;
+        border-bottom: 1px solid #eee;
         text-align: center;
     }
     .navbar a {
-        margin: 0 20px;
+        color: #f25287;
         text-decoration: none;
         font-weight: 600;
-        color: #00c39a;
-        transition: color 0.3s;
+        margin: 0 18px;
+        transition: all 0.3s ease;
     }
-    .navbar a:hover { color: #007e6c; }
+    .navbar a:hover {
+        color: #ff8ba7;
+        text-decoration: underline;
+    }
 
-    /* Contenu principal avec animation d’apparition */
+    /* Effet de transition globale */
     .main {
         opacity: 0;
         animation: fadeIn 1.2s ease forwards;
     }
     @keyframes fadeIn {
-        0% {opacity: 0; transform: translateY(10px);}
-        100% {opacity: 1; transform: translateY(0);}
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
-    /* HERO banner */
+    /* Hero Section */
     .hero {
-        background: linear-gradient(120deg, #00c39a, #00d6a3, #00b38a);
+        background: linear-gradient(120deg, #f25287, #ff8ba7, #ffd1dc);
         background-size: 300% 300%;
-        animation: gradientShift 8s ease infinite;
-        padding: 80px 20px;
+        animation: gradientShift 10s ease infinite;
+        padding: 90px 20px 60px;
         color: white;
         text-align: center;
         border-radius: 20px;
-        margin-top: 80px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        margin-top: 70px;
+        margin-bottom: 40px;
     }
     @keyframes gradientShift {
-        0% {background-position: 0% 50%;}
-        50% {background-position: 100% 50%;}
-        100% {background-position: 0% 50%;}
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
     }
-
-    .hero h1 { font-size: 40px; font-weight: 800; margin-bottom: 10px; }
-    .hero h2 { font-size: 22px; font-weight: 500; margin-top: 0; }
-    .hero a {
-        background-color: white;
-        color: #00c39a;
-        padding: 12px 24px;
+    .hero h1 { font-size: 38px; font-weight: 800; margin-bottom: 10px; }
+    .hero h2 { font-size: 20px; font-weight: 500; margin-bottom: 25px; }
+    .btn-contact {
+        background: white;
+        color: #f25287;
+        padding: 10px 25px;
         border-radius: 8px;
         text-decoration: none;
         font-weight: 600;
-        display: inline-block;
-        margin-top: 20px;
         transition: all 0.3s ease;
     }
-    .hero a:hover { background-color: #007e6c; color: white; }
+    .btn-contact:hover { background: #f25287; color: white; }
 
-    /* Cartes de services et projets */
+    /* Services & Projets */
     .service-box, .project-box {
-        border: 1px solid #ddd;
+        border: 1px solid #eee;
         border-radius: 12px;
         padding: 20px;
         margin: 10px;
-        background-color: white;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-        transition: all 0.3s ease;
+        background-color: #fff;
         text-align: center;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
     .service-box:hover, .project-box:hover {
-        transform: translateY(-6px);
-        box-shadow: 0 8px 20px rgba(0,195,154,0.25);
+        transform: translateY(-5px);
+        box-shadow: 0 6px 18px rgba(242,82,135,0.25);
     }
-    .service-box h3, .project-box h3 {
-        color: #333; font-weight: 700; margin-bottom: 10px;
+    .service-box h3, .project-box h3 { color: #333; margin-bottom: 10px; }
+    .emoji { font-size: 40px; margin-bottom: 8px; }
+
+    /* Pied de page */
+    footer {
+        text-align: center;
+        margin-top: 40px;
+        border-top: 1px solid #eee;
+        padding-top: 15px;
+        font-size: 14px;
     }
-    .service-box p, .project-box p {
-        color: #666; font-size: 14px;
-    }
-    .emoji {font-size: 38px; margin-bottom: 10px;}
     </style>
+
+    <nav class="navbar">
+        <a href="#services">Services</a>
+        <a href="#about">À propos</a>
+        <a href="#projects">Projets</a>
+        <a href="#contact">Contact</a>
+    </nav>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------
-# NAVBAR
-# -----------------------------------------------------
-st.markdown("""
-<div class="navbar">
-    <a href="#services">Services</a>
-    <a href="#apropos">À propos</a>
-    <a href="#projets">Projets</a>
-    <a href="#contact">Contact</a>
-</div>
-""", unsafe_allow_html=True)
-
-# -----------------------------------------------------
-# HERO SECTION
+# PAGE 1 : LES SERVICES
 # -----------------------------------------------------
 st.markdown("""
 <div class="hero">
-    <h1>Alioune Gaye</h1>
-    <h2>L’intelligence artificielle et la donnée au cœur de votre réussite.</h2>
-    <a href="mailto:aliounegaye911@gmail.com">💌 Me contacter</a>
+    <h1>🚀 Data Workers</h1>
+    <h2>La donnée, le web et l’intelligence artificielle au service de votre croissance</h2>
+    <a href="mailto:aliounegaye911@gmail.com" class="btn-contact">📩 Me contacter</a>
 </div>
 """, unsafe_allow_html=True)
 
-# -----------------------------------------------------
-# LOTTIE ANIMATIONS
-# -----------------------------------------------------
-def load_lottieurl(url: str):
-    r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
-
-ai_anim = load_lottieurl("https://lottie.host/da1b6f23-29b4-4c0c-80af-1c0a4b82b8e3/Z4aQxNGRxA.json")
-data_anim = load_lottieurl("https://lottie.host/f522a5b1-7f6b-4236-97c2-4e99cb469ea8/1qGtbUPpUl.json")
-web_anim = load_lottieurl("https://lottie.host/2e896d9f-bb7d-4c7a-b7de-58d7b42d8e45/yo6nbpQJ9M.json")
-
-st.markdown("<div id='services'></div>", unsafe_allow_html=True)
-st.subheader("🌟 Mes domaines d’expertise")
+st.markdown("<h2 id='services' style='color:#f25287;'>💼 Les services que je propose</h2>", unsafe_allow_html=True)
+st.write("Je conçois et déploie des solutions **data et web intelligentes** alliant IA, automatisation et développement full-stack.")
 
 col1, col2, col3 = st.columns(3)
 with col1:
-    st_lottie(ai_anim, height=150, key="ai")
-    st.markdown("""<div class="service-box"><div class="emoji">🤖</div><h3>IA & Modélisation</h3><p>Conception de modèles prédictifs et automatisation intelligente via Machine Learning et Deep Learning.</p></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="service-box"><div class="emoji">📈</div><h3>Analyse exploratoire</h3><p>Nettoyage, structuration et visualisation de données pour révéler des insights décisionnels.</p></div>""", unsafe_allow_html=True)
 with col2:
-    st_lottie(data_anim, height=150, key="data")
-    st.markdown("""<div class="service-box"><div class="emoji">📊</div><h3>Analyse de données</h3><p>Nettoyage, structuration et visualisation des données pour révéler les insights les plus pertinents.</p></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="service-box"><div class="emoji">🤖</div><h3>IA & Prédiction</h3><p>Modèles de Machine Learning et Deep Learning pour anticiper les comportements et automatiser les processus.</p></div>""", unsafe_allow_html=True)
 with col3:
-    st_lottie(web_anim, height=150, key="web")
-    st.markdown("""<div class="service-box"><div class="emoji">💻</div><h3>Développement Web</h3><p>Création d’applications web et d’API avec Node.js, React, Tailwind CSS et PostgreSQL.</p></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="service-box"><div class="emoji">⚙️</div><h3>API & Automatisation</h3><p>Création d’API intelligentes combinant OCR, LLM et intégrations cloud (Google, AWS, Azure).</p></div>""", unsafe_allow_html=True)
+
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.markdown("""<div class="service-box"><div class="emoji">💻</div><h3>Développement Backend</h3><p>Node.js, Express, TypeScript, PostgreSQL et Drizzle ORM. Authentification, WebSocket, tâches planifiées.</p></div>""", unsafe_allow_html=True)
+with col2:
+    st.markdown("""<div class="service-box"><div class="emoji">🎨</div><h3>Frontend Moderne</h3><p>React 18, Tailwind CSS, Radix UI, shadcn — interfaces performantes et esthétiques.</p></div>""", unsafe_allow_html=True)
+with col3:
+    st.markdown("""<div class="service-box"><div class="emoji">🧩</div><h3>Intégrations</h3><p>Connexion à Google APIs, SendGrid, AWS S3, OAuth, IMAP/SMTP et services tiers.</p></div>""", unsafe_allow_html=True)
 
 # -----------------------------------------------------
-# À PROPOS DE MOI
+# PAGE 2 : À PROPOS
 # -----------------------------------------------------
-st.markdown("<div id='apropos'></div>", unsafe_allow_html=True)
-st.subheader("👤 À propos de moi")
-
+st.markdown("<h2 id='about' style='color:#f25287;'>👤 À propos de moi</h2>", unsafe_allow_html=True)
 col1, col2 = st.columns([1, 2])
 with col1:
-    st.image("dv_lottery.jpg", caption="Alioune Gaye", use_container_width=True)
+    st.image("dv_lottery.jpg", use_container_width=True)
 with col2:
     st.markdown("""
-    Je suis **Alioune Gaye**, Data Scientist et Développeur Full-Stack passionné par l’intelligence artificielle et la valorisation de la donnée.  
-    Mon objectif : transformer des données brutes en leviers stratégiques pour les entreprises à travers des solutions IA innovantes.
+    Je suis **Alioune Gaye**, Data Scientist, statisticien et développeur full-stack spécialisé en IA et automatisation.  
+    Mon objectif : transformer la donnée en valeur métier à travers des solutions concrètes, performantes et évolutives.
     """)
-
-st.markdown("### 🎓 Formation")
-st.markdown("**Master en Statistique, Modélisation et Science des données** – Université Claude Bernard Lyon 1 (Bac +5)")
-
-st.markdown("### 🧠 Compétences clés")
-st.markdown("""
-- **Backend :** Node.js, Express, TypeScript, PostgreSQL, Drizzle ORM  
-- **Frontend :** React, Tailwind CSS, shadcn, Radix UI  
-- **IA :** Machine Learning, Deep Learning, NLP, Vision, OCR, LLMs (RAG)  
-- **Outils :** Docker, Azure, GitHub, SendGrid, AWS S3  
-- **Automatisation :** cron jobs, API REST, ETL  
-- **Docs & PDF :** jspdf, docxtemplater, mammoth, html2pdf  
-""")
+st.markdown("**🎓 Éducation :** Master en Statistique, Modélisation et Science des données – Université Claude Bernard Lyon 1 (Bac +5).")
+st.markdown("**💡 Compétences comportementales :** communication claire, rigueur, innovation, autonomie, leadership technique.")
+st.markdown("**🧠 Compétences techniques :** Machine Learning, Deep Learning, NLP, Vision, Node.js, React, Tailwind CSS, PostgreSQL, Docker, Azure, Django, GitHub.")
+st.markdown("**💻 Langages :** Python, R, C++, SQL, TypeScript, JavaScript, Stata.")
+st.markdown("**📊 Outils :** Power BI, Excel, Streamlit, Shiny, Tableau.")
 
 # -----------------------------------------------------
-# MES PROJETS
+# PAGE 3 : PROJETS
 # -----------------------------------------------------
-st.markdown("<div id='projets'></div>", unsafe_allow_html=True)
-st.subheader("🚀 Mes projets récents")
-
+st.markdown("<h2 id='projects' style='color:#f25287;'>🧩 Mes projets</h2>", unsafe_allow_html=True)
 col1, col2, col3 = st.columns(3)
 with col1:
     st.image("Alzeimer.PNG", caption="Détection Alzheimer", use_container_width=True)
-    st.markdown("""<div class="project-box"><h3>Détection Alzheimer</h3><p>Deep Learning (VGG19, ResNet50) sur IRM pour détecter les stades de démence.</p></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="project-box"><h3>Détection de la Maladie d'Alzheimer</h3><p>Deep Learning (VGG19, ResNet50) sur IRM pour détecter les stades de démence.</p><a href="https://view.officeapps.live.com/op/view.aspx?src=https://raw.githubusercontent.com/Stagiaire2023GayeAlioune/Mon_application_AutoML/refs/heads/master/Detection_Alzheimer_Deep_Learning.docx">Rapport</a></div>""", unsafe_allow_html=True)
 with col2:
-    st.image("crm_synergie.png", caption="CRM Synergie Marketing", use_container_width=True)
-    st.markdown("""<div class="project-box"><h3>CRM Synergie Marketing Group</h3><p>CRM complet de gestion clients, ventes et commissions – Stack : Node.js, React, PostgreSQL, WebSocket.</p></div>""", unsafe_allow_html=True)
+    st.image("cancer.PNG", caption="Cancer du Sein", use_container_width=True)
+    st.markdown("""<div class="project-box"><h3>Détection du Cancer du Sein</h3><p>Classification échographique des masses mammaires (bénin, malin, normal).</p><a href="https://github.com/Stagiaire2023GayeAlioune/Mon_application_AutoML/blob/master/Rapport_Cancer_du_sein.pdf">Rapport</a></div>""", unsafe_allow_html=True)
 with col3:
-    st.image("api_ocr.png", caption="API OCR & LLM", use_container_width=True)
-    st.markdown("""<div class="project-box"><h3>API OCR & LLM Immobilier</h3><p>Extraction automatique de documents (PDF, images) via OCR + modèles LLM pour vérification.</p></div>""", unsafe_allow_html=True)
+    st.image("carte.PNG", caption="Fraude Bancaire", use_container_width=True)
+    st.markdown("""<div class="project-box"><h3>Détection de Fraude Bancaire</h3><p>Classification des transactions frauduleuses via modèles supervisés.</p><a href="https://github.com/Stagiaire2023GayeAlioune/Mon_application_AutoML/blob/master/Rapport_detection_fraude.pdf">Rapport</a></div>""", unsafe_allow_html=True)
 
-st.image("ai_juridique.png", caption="Agent IA Juridique", use_container_width=True)
-st.markdown("""<div class="project-box"><h3>Agent IA Juridique</h3><p>Assistant IA bilingue (français/arabe) basé sur RAG et embeddings OpenAI pour répondre à des questions juridiques.</p></div>""", unsafe_allow_html=True)
-
-# -----------------------------------------------------
-# CONTACT / FOOTER
-# -----------------------------------------------------
-st.markdown("<div id='contact'></div>", unsafe_allow_html=True)
-st.subheader("📬 Me contacter")
+col1, col2 = st.columns(2)
+with col1:
+    st.image("credi.jpg", caption="Analyse de Crédit", use_container_width=True)
+    st.markdown("""<div class="project-box"><h3>Analyse des Risques de Crédit</h3><p>Scoring et prévision de risque client par ML.</p><a href="https://risquedecreditsclients.streamlit.app/">Application</a></div>""", unsafe_allow_html=True)
+with col2:
+    st.image("RH.PNG", caption="Dashboard RH", use_container_width=True)
+    st.markdown("""<div class="project-box"><h3>Tableau de Bord RH</h3><p>Dashboard interactif pour analyser attrition, performance et démographie RH.</p><a href="https://applicationtableaudebordanalyserh.streamlit.app/">Application</a></div>""", unsafe_allow_html=True)
 
 st.markdown("""
-<p style='text-align: center; font-size: 18px;'>
-    📧 <a href='mailto:aliounegaye911@gmail.com'>aliounegaye911@gmail.com</a><br>
-    📞 <a href='tel:+33763556982'>07 63 55 69 82</a><br>
-    🌐 <a href='https://www.linkedin.com/in/alioune-gaye-1a5161172/'>LinkedIn</a><br><br>
-    © 2025 Data Workers – <strong>Alioune Gaye</strong>
-</p>
+<div class="project-box"><h3>CRM Synergie Marketing Group</h3><p>CRM complet pour la gestion clients, ventes et commissions. Stack : Node.js, React, PostgreSQL, WebSocket.</p></div>
+<div class="project-box"><h3>API OCR & LLM Immobilier</h3><p>Extraction automatique de données structurées à partir de PDF et images grâce à l’OCR et aux LLM.</p></div>
+<div class="project-box"><h3>Agent IA Juridique Multilingue</h3><p>Assistant IA bilingue basé sur un pipeline RAG (OpenAI + FAISS) pour répondre à des questions juridiques.</p></div>
+""", unsafe_allow_html=True)
+
+# -----------------------------------------------------
+# CONTACT
+# -----------------------------------------------------
+st.markdown("<h2 id='contact' style='color:#f25287;'>📞 Contact</h2>", unsafe_allow_html=True)
+st.markdown("""
+**📧 Email :** aliounegaye911@gmail.com  
+**📱 Téléphone :** +33 7 63 55 69 82  
+**🔗 LinkedIn :** [Alioune Gaye](https://www.linkedin.com/in/alioune-gaye-1a5161172/)
+""")
+
+# -----------------------------------------------------
+# PIED DE PAGE
+# -----------------------------------------------------
+st.markdown("""
+<footer>
+© 2025 Data Workers — <b>Alioune Gaye</b> | Tous droits réservés.
+</footer>
 """, unsafe_allow_html=True)
