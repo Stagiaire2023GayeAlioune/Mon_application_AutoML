@@ -10,7 +10,9 @@ ipython
 ipython-genutils==0.2.0
 streamlit==1.41.1
 plotly>=5.0.0
-
+streamlit-lottie
+requests
+pandas
 
 
 
@@ -29,6 +31,7 @@ plotly>=5.0.0
 
 
 fpdf==1.7.2
+
 
 
 
