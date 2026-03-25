@@ -1,0 +1,6 @@
+moviepy
+gtts
+pillow
+diffusers
+torch
+transformers
