@@ -1,398 +1,313 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Worker Stable Video Diffusion (image → vidéo) pour WaaW.
-Appelé par Node : python svd_video_worker.py <chemin_fichier_job.json>
+Interface Streamlit — même logique de formulaire que WaaW (vidéo publication) + génération SVD.
+Lance : streamlit run svd_streamlit_app.py  (depuis ce dossier ou avec PYTHONPATH)
 
-Variables d'environnement utiles :
-  UPLOAD_DIR          — racine uploads (déjà injectée par le process Node parent)
-  HF_HOME             — cache Hugging Face (optionnel)
-  SVD_MODEL_ID        — défaut: stabilityai/stable-video-diffusion-img2vid-xt
-  SVD_FORCE_CPU       — si 1 : forcer le CPU même si CUDA est dispo (tests)
-  SVD_CPU_FP16        — défaut: 1 sur CPU : charge les poids FP16 (moins de RAM)
-  SVD_NUM_FRAMES      — défaut: 14 sur GPU, 6 sur CPU (rapide CPU : 4)
-  SVD_DECODE_CHUNK    — défaut: 4 sur GPU, 1 sur CPU
-  SVD_NUM_INFERENCE_STEPS — défaut: 25 GPU, 12 CPU (moins d’étapes = plus rapide, qualité moindre)
-  SVD_FPS             — images/s à l’export (défaut 7) ; avec SVD_MAX_DURATION_SEC borne la durée
-  SVD_MAX_DURATION_SEC — durée max de la vidéo en secondes (défaut 30) : num_frames ≤ floor(durée×fps)
-  SVD_MAX_MODEL_FRAMES — plafond modèle SVD img2vid-xt (défaut 25)
-  SVD_CPU_THREADS     — défaut: tous les cœurs (accélère un peu PyTorch sur CPU)
-  OPENAI_API_KEY      — optionnel : enrichit motion_bucket_id via un court appel LLM
-  OPENAI_MODEL        — défaut: gpt-4o-mini
+Prérequis : venv avec torch (CUDA), diffusers, ffmpeg dans le PATH pour la durée min. 30 s.
 """
 from __future__ import annotations
 
-import gc
 import json
 import os
+import shutil
+import subprocess
 import sys
-import traceback
+import uuid
+from pathlib import Path
+
+# Répertoire de travail isolé (uploads + jobs)
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_WORK_ROOT = _SCRIPT_DIR / "streamlit_work"
+_UPLOAD_ROOT = _WORK_ROOT / "uploads"
+_JOBS_DIR = _UPLOAD_ROOT / "video-generation-jobs"
+_OUT_DIR = _UPLOAD_ROOT / "video-generation-output"
+_TEST_DIR = _UPLOAD_ROOT / "test"
+
+# Durée minimale de la vidéo finale (boucle ffmpeg si le clip SVD est plus court)
+MIN_VIDEO_DURATION_SEC = float(os.environ.get("SVD_MIN_OUTPUT_DURATION_SEC", "30"))
+
+# Données alignées sur frontend (videoPublicationTones / videoPublicationLists)
+MODELS = [
+    {"id": "urgence_stock_limite", "fr": "URGENCE – STOCK LIMITÉ"},
+]
+VIDEO_TYPES = [
+    {"id": "peur_rater_urgence", "fr": "Crée la peur de rater, pousser à agir vite"},
+]
+TONE_OPTIONS: list[tuple[str, str]] = []
+for _g in [
+    ("commercial", [
+        ("persuasif", "Persuasif"),
+        ("accrocheur", "Accrocheur"),
+        ("urgent", "Urgent"),
+        ("promotionnel", "Promotionnel"),
+    ]),
+    ("autorite", [
+        ("autoritaire", "Autoritaire"),
+        ("critique", "Critique"),
+        ("engage", "Engagé"),
+    ]),
+    ("relationnel", [
+        ("amical", "Amical"),
+        ("familier", "Familier"),
+        ("respectueux", "Respectueux"),
+    ]),
+    ("informatif_pro", [
+        ("informatif", "Informatif"),
+        ("didactique", "Didactique / pédagogique"),
+        ("professionnel", "Professionnel"),
+        ("institutionnel", "Institutionnel"),
+    ]),
+    ("emotionnel", [
+        ("emotionnel", "Émotionnel"),
+        ("inspirant", "Inspirant / motivant"),
+        ("empathique", "Empathique"),
+        ("rassurant", "Rassurant"),
+    ]),
+    ("divertissant", [
+        ("humoristique", "Humoristique"),
+        ("leger_fun", "Léger / fun"),
+        ("ironique", "Ironique / sarcastique"),
+    ]),
+]:
+    for tid, label in _g[1]:
+        TONE_OPTIONS.append((tid, label))
+
+COUNTRIES = [
+    ("SN", "Sénégal"), ("FR", "France"), ("BE", "Belgique"), ("CH", "Suisse"),
+    ("CA", "Canada"), ("MA", "Maroc"), ("DZ", "Algérie"), ("TN", "Tunisie"),
+    ("CI", "Côte d'Ivoire"), ("ML", "Mali"), ("BF", "Burkina Faso"), ("OTHER", "Autre"),
+]
+CURRENCIES = [
+    ("XOF", "FCFA (XOF)"), ("EUR", "Euro"), ("USD", "Dollar US"),
+]
+GENDERS = [
+    ("homme", "Homme"), ("femme", "Femme"), ("les_deux", "Les deux"), ("peu_importe", "Peu importe"),
+]
+LANGUAGES = [("fr", "Français"), ("en", "English"), ("ar", "العربية")]
 
 
-def fail(msg: str, code: int = 1) -> None:
-    print(msg, file=sys.stderr)
-    sys.exit(code)
+def _ensure_dirs() -> None:
+    for d in (_JOBS_DIR, _OUT_DIR, _TEST_DIR):
+        d.mkdir(parents=True, exist_ok=True)
 
 
-def load_job(path: str) -> dict:
-    with open(path, "r", encoding="utf8") as f:
-        return json.load(f)
+def _ffmpeg_bin(name: str) -> str:
+    env = (os.environ.get("FFMPEG_PATH") or "").strip()
+    if name == "ffmpeg" and env:
+        return env
+    p = shutil.which(name)
+    return p or name
 
 
-def upload_root() -> str:
-    base = os.environ.get("UPLOAD_DIR", "").strip()
-    if not base:
-        fail("UPLOAD_DIR manquant dans l'environnement.")
-    return os.path.abspath(base)
-
-
-def abs_media(rel: str | None) -> str | None:
-    if not rel:
-        return None
-    return os.path.normpath(os.path.join(upload_root(), rel.replace("/", os.sep)))
-
-
-def map_payload_to_motion_noise(payload: dict) -> tuple[int, float]:
-    """
-    SVD img2vid ne prend pas de prompt texte : on mappe ton / urgence sur motion_bucket_id et noise_aug_strength.
-    Plages usuelles : motion 1–255 (défaut ~127), noise 0–0.1.
-    """
-    tone = str(payload.get("toneId") or "").lower()
-    vtype = str(payload.get("videoTypeId") or "").lower()
-    motion = 127
-    noise = 0.02
-    if "urgence" in vtype or "flash" in vtype:
-        motion = min(200, motion + 40)
-        noise = 0.04
-    if "douceur" in tone or "calme" in tone:
-        motion = max(40, motion - 35)
-        noise = 0.01
-    if "energie" in tone or "impact" in tone:
-        motion = min(220, motion + 50)
-    return motion, noise
-
-
-def optional_openai_motion(payload: dict) -> int | None:
-    key = os.environ.get("OPENAI_API_KEY", "").strip()
-    if not key:
-        return None
+def _video_duration_seconds(path: Path) -> float | None:
+    ffprobe = _ffmpeg_bin("ffprobe")
     try:
-        import urllib.request
-
-        model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
-        text = json.dumps(payload, ensure_ascii=False)[:4000]
-        body = json.dumps(
-            {
-                "model": model,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "Tu réponds uniquement par un entier entre 40 et 220 : motion_bucket_id pour une vidéo produit courte (plus haut = plus dynamique).",
-                    },
-                    {"role": "user", "content": text},
-                ],
-                "temperature": 0.3,
-                "max_tokens": 8,
-            }
-        ).encode("utf8")
-        req = urllib.request.Request(
-            "https://api.openai.com/v1/chat/completions",
-            data=body,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {key}",
-            },
-            method="POST",
+        r = subprocess.run(
+            [
+                ffprobe,
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                str(path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            data = json.load(resp)
-        raw = data["choices"][0]["message"]["content"].strip()
-        n = int("".join(c for c in raw if c.isdigit()) or "127")
-        return max(40, min(220, n))
-    except Exception:
+        if r.returncode != 0:
+            return None
+        return float(r.stdout.strip())
+    except (ValueError, FileNotFoundError, subprocess.TimeoutExpired):
         return None
 
 
-def write_job_update(job_path: str, job: dict) -> None:
-    from datetime import datetime, timezone
+def extend_to_min_duration(src: Path, dst: Path, min_sec: float) -> tuple[bool, str]:
+    """
+    Si la vidéo fait moins de min_sec, boucle avec ffmpeg jusqu'à atteindre min_sec.
+    Si ffprobe indique déjà >= min_sec, copie sans ré-encoder (ou stream copy).
+    """
+    dur = _video_duration_seconds(src)
+    ffmpeg = _ffmpeg_bin("ffmpeg")
+    if dur is not None and dur >= min_sec - 0.05:
+        shutil.copy2(src, dst)
+        return True, f"Durée déjà ≥ {min_sec}s ({dur:.1f}s), fichier copié."
 
-    job["updatedAt"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    with open(job_path, "w", encoding="utf8") as f:
-        json.dump(job, f, ensure_ascii=False, indent=2)
+    # Boucle infinie puis coupe à min_sec (sans piste audio pour simplicité)
+    cmd = [
+        ffmpeg,
+        "-y",
+        "-stream_loop",
+        "-1",
+        "-i",
+        str(src),
+        "-t",
+        str(min_sec),
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        str(dst),
+    ]
+    try:
+        subprocess.run(cmd, capture_output=True, text=True, timeout=600, check=True)
+        return True, f"Vidéo étendue à {min_sec}s (boucle ffmpeg)."
+    except FileNotFoundError:
+        shutil.copy2(src, dst)
+        return False, "ffmpeg introuvable : sortie SVD brute (durée < 30s possible)."
+    except subprocess.CalledProcessError as e:
+        shutil.copy2(src, dst)
+        return False, f"ffmpeg erreur, sortie brute : {e.stderr[:300] if e.stderr else e}"
+
+
+def run_worker(job_path: Path) -> int:
+    os.environ["UPLOAD_DIR"] = str(_UPLOAD_ROOT)
+    worker = _SCRIPT_DIR / "svd_video_worker.py"
+    py = sys.executable
+    return subprocess.run([py, str(worker), str(job_path)], cwd=str(_SCRIPT_DIR)).returncode
 
 
 def main() -> None:
-    if len(sys.argv) < 2:
-        fail("Usage: python svd_video_worker.py <job.json>")
-    job_path = os.path.abspath(sys.argv[1])
-    if not os.path.isfile(job_path):
-        fail(f"Fichier job introuvable: {job_path}")
+    import streamlit as st
 
-    job = load_job(job_path)
-    job_id = job.get("id")
-    payload = job.get("payload") or {}
-    paths = job.get("persistedPaths") or {}
-    product = abs_media(paths.get("productImage"))
-    if not product or not os.path.isfile(product):
-        fail(f"Image produit introuvable: {product}")
-
-    out_rel = os.path.join("video-generation-output", f"{job_id}.mp4").replace("\\", "/")
-    out_abs = os.path.normpath(os.path.join(upload_root(), out_rel.replace("/", os.sep)))
-    os.makedirs(os.path.dirname(out_abs), exist_ok=True)
-
-    try:
-        import torch
-    except ImportError as e:
-        fail(f"PyTorch non installé: {e}\nInstallez: pip install -r requirements-svd.txt")
-
-    def cuda_is_usable():
-        """True seulement si PyTorch peut réellement allouer sur CUDA (évite CPU-only + is_available() trompeur)."""
-        if not torch.cuda.is_available():
-            return False
-        try:
-            x = torch.zeros(1, device="cuda")
-            del x
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            return True
-        except RuntimeError:
-            return False
-
-    force_cpu = os.environ.get("SVD_FORCE_CPU", "").strip().lower() in (
-        "1",
-        "true",
-        "yes",
+    st.set_page_config(page_title="WaaW — Génération vidéo (SVD)", layout="wide")
+    st.title("Génération vidéo produit (Stable Video Diffusion)")
+    st.caption(
+        "Formulaire aligné sur WaaW. Le modèle SVD produit un clip court ; "
+        f"la sortie est prolongée à **minimum {MIN_VIDEO_DURATION_SEC:g}s** avec ffmpeg (boucle)."
     )
-    cuda_ok = cuda_is_usable()
-    if not cuda_ok and torch.cuda.is_available():
-        print(
-            "[svd_video_worker] CUDA détecté mais non utilisable (PyTorch CPU-only ou DLL CUDA manquantes) — mode CPU.",
-            flush=True,
+
+    _ensure_dirs()
+
+    with st.form("gen"):
+        model_id = st.selectbox("Modèle", options=[m["id"] for m in MODELS], format_func=lambda x: next(m["fr"] for m in MODELS if m["id"] == x))
+        c1, c2 = st.columns(2)
+        with c1:
+            store_name = st.text_input("Nom de la boutique", "")
+            product_name = st.text_input("Nom du produit", "")
+            price = st.text_input("Prix", "")
+            destock_period = st.text_input("Période destock / urgence", "")
+        with c2:
+            phone = st.text_input("Téléphone", "")
+            location = st.text_input("Localisation", "")
+            country = st.selectbox("Pays", options=[c[0] for c in COUNTRIES], format_func=lambda x: next(c[1] for c in COUNTRIES if c[0] == x))
+            language = st.selectbox("Langue", options=[l[0] for l in LANGUAGES], format_func=lambda x: next(l[1] for l in LANGUAGES if l[0] == x))
+
+        tone_id = st.selectbox(
+            "Ton",
+            options=[t[0] for t in TONE_OPTIONS],
+            format_func=lambda x: next(t[1] for t in TONE_OPTIONS if t[0] == x),
         )
-    use_cpu = force_cpu or not cuda_ok
-
-    if use_cpu:
-        try:
-            n_cpu = int(os.environ.get("SVD_CPU_THREADS", "0").strip() or "0")
-            if n_cpu <= 0:
-                n_cpu = os.cpu_count() or 8
-            torch.set_num_threads(max(1, n_cpu))
-            n_interop = max(1, min(8, n_cpu // 2))
-            torch.set_num_interop_threads(n_interop)
-            print(
-                f"[svd_video_worker] PyTorch CPU threads={torch.get_num_threads()} "
-                f"(interop={n_interop})",
-                flush=True,
-            )
-        except Exception as e:
-            print(f"[svd_video_worker] Impossible de régler les threads CPU: {e}", flush=True)
-
-    if use_cpu and not force_cpu:
-        print(
-            "[svd_video_worker] AVERTISSEMENT : CUDA indisponible — exécution sur CPU "
-            "(très lent, forte utilisation RAM). Préférez un GPU NVIDIA en production.",
-            flush=True,
+        video_type_id = st.selectbox(
+            "Type de vidéo",
+            options=[v["id"] for v in VIDEO_TYPES],
+            format_func=lambda x: next(v["fr"] for v in VIDEO_TYPES if v["id"] == x),
         )
-    elif use_cpu and force_cpu:
-        print("[svd_video_worker] SVD_FORCE_CPU=1 — mode CPU forcé.", flush=True)
+        currency = st.selectbox("Devise", options=[c[0] for c in CURRENCIES], format_func=lambda x: next(c[1] for c in CURRENCIES if c[0] == x))
+        gender = st.selectbox("Public cible", options=[g[0] for g in GENDERS], format_func=lambda x: next(g[1] for g in GENDERS if g[0] == x))
+        other = st.text_area("Autres précisions (optionnel)", "", max_chars=500)
 
-    motion, noise = map_payload_to_motion_noise(payload)
-    llm_motion = optional_openai_motion(payload)
-    if llm_motion is not None:
-        motion = llm_motion
+        img = st.file_uploader("Image produit *", type=["jpg", "jpeg", "png", "webp"])
+        logo = st.file_uploader("Logo (optionnel)", type=["jpg", "jpeg", "png", "webp"])
 
-    model_id = os.environ.get(
-        "SVD_MODEL_ID", "stabilityai/stable-video-diffusion-img2vid-xt"
-    )
-    default_frames = "6" if use_cpu else "14"
-    default_chunk = "1" if use_cpu else "4"
-    fps = max(1, int(os.environ.get("SVD_FPS", "7")))
-    max_duration_sec = float(os.environ.get("SVD_MAX_DURATION_SEC", "30"))
-    if max_duration_sec <= 0:
-        max_duration_sec = 30.0
-    model_max_frames = int(os.environ.get("SVD_MAX_MODEL_FRAMES", "25"))
-    max_frames_by_duration = max(1, int(max_duration_sec * fps))
-    num_frames = int(os.environ.get("SVD_NUM_FRAMES", default_frames))
-    num_frames = min(num_frames, max_frames_by_duration, model_max_frames)
-    num_frames = max(1, num_frames)
-    decode_chunk = int(os.environ.get("SVD_DECODE_CHUNK", default_chunk))
-    default_infer = "12" if use_cpu else "25"
-    num_inference_steps = int(
-        os.environ.get("SVD_NUM_INFERENCE_STEPS", default_infer)
-    )
+        submitted = st.form_submit_button("Générer la vidéo")
 
-    try:
-        from diffusers import StableVideoDiffusionPipeline
-        from diffusers.utils import export_to_video, load_image
-    except ImportError as e:
-        fail(f"diffusers non installé: {e}\n pip install -r requirements-svd.txt")
+    if not submitted:
+        return
 
-    device = "cpu" if use_cpu else "cuda"
-    print(
-        f"[svd_video_worker] model={model_id} device={device} motion={motion} "
-        f"noise_aug={noise} num_frames={num_frames} fps={fps} max_duration_sec={max_duration_sec} "
-        f"infer_steps={num_inference_steps}",
-        flush=True,
-    )
+    if not img:
+        st.error("Ajoute une image produit.")
+        return
+    if not all([store_name.strip(), product_name.strip(), price.strip(), destock_period.strip(), phone.strip(), location.strip()]):
+        st.error("Remplis boutique, produit, prix, période destock, téléphone et localisation.")
+        return
 
-    # Chargement poids : limiter la RAM (serveurs sans GPU souvent peu dotés)
-    _load_kw = {
-        "low_cpu_mem_usage": True,
-        "use_safetensors": True,
-    }
+    job_id = str(uuid.uuid4())
+    ext = Path(img.name).suffix or ".jpg"
+    product_rel = f"test/{job_id}{ext}"
+    product_abs = _TEST_DIR / f"{job_id}{ext}"
+    product_abs.parent.mkdir(parents=True, exist_ok=True)
+    product_abs.write_bytes(img.getbuffer())
 
-    if use_cpu:
-        gc.collect()
-        fp16_cpu = os.environ.get("SVD_CPU_FP16", "1").strip().lower() in (
-            "1",
-            "true",
-            "yes",
-        )
-        pipe = None
-        last_err = None
-        if fp16_cpu:
-            try:
-                print(
-                    "[svd_video_worker] Chargement FP16 + safetensors (moins de RAM que float32).",
-                    flush=True,
-                )
-                pipe = StableVideoDiffusionPipeline.from_pretrained(
-                    model_id,
-                    torch_dtype=torch.float16,
-                    variant="fp16",
-                    **_load_kw,
-                )
-            except MemoryError as e:
-                fail(
-                    "Mémoire RAM insuffisante pour charger le modèle (même en FP16).\n"
-                    "Augmentez la RAM, ou déployez sur une machine avec GPU NVIDIA + PyTorch CUDA.\n"
-                    f"Détail: {e}"
-                )
-            except Exception as e:
-                last_err = e
-                print(
-                    f"[svd_video_worker] Échec chargement FP16: {e} — essai float32 + low_cpu_mem_usage.",
-                    flush=True,
-                )
-        if pipe is None:
-            try:
-                gc.collect()
-                pipe = StableVideoDiffusionPipeline.from_pretrained(
-                    model_id,
-                    torch_dtype=torch.float32,
-                    **_load_kw,
-                )
-            except MemoryError as e:
-                fail(
-                    "Mémoire RAM insuffisante pour charger le modèle SVD.\n"
-                    "Augmentez la RAM du serveur, utilisez un GPU avec build PyTorch CUDA, "
-                    "ou définissez SVD_CPU_FP16=1 (défaut) si les poids fp16 sont disponibles.\n"
-                    f"Détail: {e}"
-                )
-            except Exception as e:
-                if last_err:
-                    fail(f"Chargement modèle impossible: {e}\n(précédent: {last_err})")
-                raise
-        pipe.to("cpu")
-        try:
-            pipe.enable_attention_slicing()
-        except Exception:
-            pass
-    else:
-        dtype = torch.float16
-        try:
-            pipe = StableVideoDiffusionPipeline.from_pretrained(
-                model_id,
-                torch_dtype=dtype,
-                variant="fp16",
-                **_load_kw,
-            )
-        except OSError:
-            pipe = StableVideoDiffusionPipeline.from_pretrained(
-                model_id,
-                torch_dtype=dtype,
-                **_load_kw,
-            )
-        pipe.to("cuda")
-        try:
-            pipe.enable_xformers_memory_efficient_attention()
-        except Exception:
-            pass
+    logo_rel = None
+    if logo:
+        lext = Path(logo.name).suffix or ".png"
+        logo_rel = f"test/logo_{job_id}{lext}"
+        (_UPLOAD_ROOT / logo_rel.replace("/", os.sep)).parent.mkdir(parents=True, exist_ok=True)
+        (_UPLOAD_ROOT / logo_rel.replace("/", os.sep)).write_bytes(logo.getbuffer())
 
-    from PIL import Image as PILImage
-
-    image = load_image(product)
-    if image.mode != "RGB":
-        image = image.convert("RGB")
-    # Format attendu par SVD img2vid (16:9)
-    try:
-        resample = PILImage.Resampling.LANCZOS
-    except AttributeError:
-        resample = PILImage.LANCZOS
-    image = image.resize((1024, 576), resample)
-
-    # Même device que le pipeline (bug corrigé : ne pas forcer cuda si mode CPU)
-    generator = torch.Generator(device=device).manual_seed(42)
-    _call_kw = dict(
-        num_frames=num_frames,
-        decode_chunk_size=decode_chunk,
-        motion_bucket_id=motion,
-        noise_aug_strength=noise,
-        generator=generator,
-    )
-    try:
-        result = pipe(
-            image,
-            num_inference_steps=num_inference_steps,
-            **_call_kw,
-        )
-    except TypeError:
-        # Anciennes versions diffusers sans num_inference_steps
-        result = pipe(image, **_call_kw)
-    frames = result.frames[0]
-    if hasattr(frames, "__len__") and len(frames) > num_frames:
-        frames = frames[:num_frames]
-
-    export_to_video(frames, out_abs, fps=fps)
-
-    if not os.path.isfile(out_abs):
-        fail("export_to_video n'a pas produit de fichier MP4.")
-
-    job["status"] = "completed"
-    job["outputVideoRelativePath"] = out_rel
-    job["error"] = None
-    job["svdMeta"] = {
+    payload = {
         "modelId": model_id,
-        "device": device,
-        "motionBucketId": motion,
-        "noiseAugStrength": noise,
-        "numFrames": num_frames,
-        "fps": fps,
-        "maxDurationSec": max_duration_sec,
-        "maxFramesByDuration": max_frames_by_duration,
-        "modelMaxFrames": model_max_frames,
-        "numInferenceSteps": num_inference_steps,
-        "decodeChunkSize": decode_chunk,
-        "usedOpenAiMotion": llm_motion is not None,
-        "cpuMode": use_cpu,
+        "storeName": store_name,
+        "productName": product_name,
+        "price": price,
+        "destockPeriod": destock_period,
+        "phone": phone,
+        "location": location,
+        "country": country,
+        "language": language,
+        "toneId": tone_id,
+        "videoTypeId": video_type_id,
+        "other": other,
+        "currency": currency,
+        "gender": gender,
+        "regenerateHint": "",
     }
-    write_job_update(job_path, job)
-    print(f"[svd_video_worker] OK -> {out_abs}", flush=True)
+
+    job = {
+        "id": job_id,
+        "userId": 1,
+        "status": "running",
+        "payload": payload,
+        "persistedPaths": {"productImage": product_rel.replace("\\", "/"), "logo": logo_rel},
+    }
+
+    job_path = _JOBS_DIR / f"{job_id}.json"
+    job_path.write_text(json.dumps(job, ensure_ascii=False, indent=2), encoding="utf8")
+
+    os.environ["UPLOAD_DIR"] = str(_UPLOAD_ROOT)
+    if not os.environ.get("HF_HOME"):
+        os.environ["HF_HOME"] = str(_WORK_ROOT / ".cache" / "huggingface")
+
+    with st.spinner("Génération SVD en cours (première fois : téléchargement du modèle)…"):
+        code = run_worker(job_path)
+
+    raw_out = _OUT_DIR / f"{job_id}.mp4"
+    final_out = _OUT_DIR / f"{job_id}_min{int(MIN_VIDEO_DURATION_SEC)}s.mp4"
+
+    if code != 0 or not raw_out.is_file():
+        st.error("Échec du worker. Vérifie les logs ci-dessus ou le fichier job.")
+        if job_path.is_file():
+            try:
+                err_job = json.loads(job_path.read_text(encoding="utf8"))
+                st.code(err_job.get("error") or "pas de détail", language="text")
+            except Exception:
+                pass
+        return
+
+    ok_ext, msg = extend_to_min_duration(raw_out, final_out, MIN_VIDEO_DURATION_SEC)
+    st.info(msg)
+    if not ok_ext:
+        st.warning("Installe ffmpeg et ajoute-le au PATH pour la durée min. 30s.")
+
+    st.success("Vidéo prête.")
+    show_path = final_out if final_out.is_file() else raw_out
+    st.video(str(show_path))
+    st.caption(f"Fichier : `{show_path}` (brut SVD : `{raw_out}`)")
+
+    st.download_button(
+        "Télécharger la vidéo",
+        data=show_path.read_bytes(),
+        file_name=show_path.name,
+        mime="video/mp4",
+    )
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        tb = traceback.format_exc()
-        print(tb, file=sys.stderr)
-        try:
-            job_path = os.path.abspath(sys.argv[1])
-            if os.path.isfile(job_path):
-                job = load_job(job_path)
-                job["status"] = "failed"
-                job["error"] = (str(e) + "\n" + tb)[:2000]
-                write_job_update(job_path, job)
-        except Exception:
-            pass
-        fail(str(e), 1)
+    main()
