@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Post-traitement livraison : SVD produit ~2–4 s ; on boucle jusqu’à une durée cible,
-voix off (edge-tts) à partir du formulaire, sous-titres ASS, logo optionnel (ffmpeg).
+Post-traitement livraison :
+- Mode marketing (défaut) : vidéo fluide type pub — zoom/pan Ken Burns sur l’image produit
+  (pas de boucle du clip SVD), voix edge-tts, sous-titres ASS découpés, logo.
+- Mode loop : boucle du clip SVD court (ancien comportement).
+
+Variables : SVD_MARKETING_MODE=ken_burns|1 (défaut) ou loop|0, SVD_MARKETING_FPS (défaut 30).
 """
 from __future__ import annotations
 
@@ -110,6 +114,15 @@ def build_spoken_script(payload: dict[str, Any]) -> str:
     return text[:4500] if text else "Découvrez notre offre."
 
 
+def _ass_time_tc(sec: float) -> str:
+    """Temps ASS (H:MM:SS.cc)."""
+    sec = max(0.0, float(sec))
+    h = int(sec // 3600)
+    m = int((sec % 3600) // 60)
+    s = sec % 60
+    return f"{h}:{m:02d}:{s:05.2f}"
+
+
 def _ass_escape(s: str) -> str:
     return (
         str(s)
@@ -146,10 +159,7 @@ def write_overlay_ass(path: str, payload: dict[str, Any], duration_sec: float) -
 
     body = r"\N".join(lines) if lines else _ass_escape("WaaW")
 
-    end_h = int(duration_sec // 3600)
-    end_m = int((duration_sec % 3600) // 60)
-    end_s = duration_sec % 60
-    end_tc = f"{end_h:d}:{end_m:02d}:{end_s:05.2f}".replace(".", ":")
+    end_tc = _ass_time_tc(duration_sec)
 
     content = f"""[Script Info]
 ScriptType: v4.00+
@@ -167,6 +177,98 @@ Dialogue: 0,0:00:00.00,{end_tc},Default,,0,0,0,,{{\\an2\\pos(512,500)}}{body}
 """
     with open(path, "w", encoding="utf8") as f:
         f.write(content)
+
+
+def write_marketing_ass(path: str, payload: dict[str, Any], duration_sec: float) -> None:
+    """Sous-titres découpés en 3 temps (accroche, offre, contact) — rendu type pub."""
+    d = max(10.0, float(duration_sec))
+    t_a = d * 0.33
+    t_b = d * 0.66
+
+    store = str(payload.get("storeName") or "").strip()
+    product = str(payload.get("productName") or "").strip()
+    p = str(payload.get("price") or "").strip()
+    c = str(payload.get("currency") or "").strip()
+    destock = str(payload.get("destockPeriod") or "").strip()
+    phone = str(payload.get("phone") or "").strip()
+    loc = str(payload.get("location") or "").strip()
+    other = str(payload.get("other") or "").strip()[:180]
+
+    line1 = _ass_escape(f"{store} — {product}".strip(" —")) if (store or product) else _ass_escape("WaaW")
+    line2 = _ass_escape(f"{p} {c}".strip()) + (f" · {_ass_escape(destock)}" if destock else "")
+    if not line2.strip():
+        line2 = _ass_escape("—")
+    line3 = _ass_escape(f"{phone} · {loc}".strip(" ·")) + (f"\\N{_ass_escape(other)}" if other else "")
+    if not line3.replace("\\N", "").strip():
+        line3 = _ass_escape(" ")
+
+    end_tc = _ass_time_tc(d)
+
+    content = f"""[Script Info]
+ScriptType: v4.00+
+PlayResX: 1024
+PlayResY: 576
+WrapStyle: 0
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Head,DejaVu Sans,40,&H00FFFF00,&H000000FF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,3,2,2,40,40,28,1
+Style: Body,DejaVu Sans,34,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2,1,2,40,40,40,1
+Style: Cta,DejaVu Sans,30,&H00C0C0C0,&H000000FF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2,1,2,40,40,52,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,{_ass_time_tc(t_a)},Head,,0,0,0,,{{\\an8\\pos(512,120)}}{line1}
+Dialogue: 0,{_ass_time_tc(t_a)},{_ass_time_tc(t_b)},Body,,0,0,0,,{{\\an2\\pos(512,300)}}{line2}
+Dialogue: 0,{_ass_time_tc(t_b)},{end_tc},Cta,,0,0,0,,{{\\an2\\pos(512,480)}}{line3}
+"""
+    with open(path, "w", encoding="utf8") as f:
+        f.write(content)
+
+
+def _use_marketing_ken_burns() -> bool:
+    v = (os.environ.get("SVD_MARKETING_MODE") or "ken_burns").strip().lower()
+    if v in ("loop", "0", "false", "no", "svd", "svd_only"):
+        return False
+    return True
+
+
+def ken_burns_from_image(image_path: str, out_mp4: str, duration_sec: float) -> None:
+    """Zoom/pan fluide sur l’image produit (1024×576, 30 ips par défaut)."""
+    fps = int(os.environ.get("SVD_MARKETING_FPS", "30"))
+    fps = max(15, min(60, fps))
+    fr = max(int(round(float(duration_sec) * fps)), fps)
+    vf = (
+        f"scale=1600:-1:flags=lanczos,"
+        f"zoompan=z='min(zoom+0.0010,1.28)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={fr}:s=1024x576:fps={fps}"
+    )
+    subprocess.run(
+        [
+            _ffmpeg_exe(),
+            "-y",
+            "-loop",
+            "1",
+            "-i",
+            image_path,
+            "-vf",
+            vf,
+            "-c:v",
+            "libx264",
+            "-preset",
+            "medium",
+            "-crf",
+            "20",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
+            out_mp4,
+        ],
+        capture_output=True,
+        text=True,
+        timeout=1800,
+        check=True,
+    )
 
 
 async def _edge_tts_save(text: str, out_mp3: str, voice: str) -> None:
@@ -223,9 +325,11 @@ def compose_delivery_mp4(
     logo_abs: str | None,
     min_duration_sec: float,
     enable_tts: bool,
+    product_image_abs: str | None = None,
 ) -> dict[str, Any]:
     """
     Remplace raw_mp4 par une version final_mp4 (même chemin possible : écrit dans tmp puis replace).
+    Mode marketing : image produit + Ken Burns (product_image_abs). Sinon boucle du clip SVD (raw_mp4).
     Retourne métadonnées pour job.svdMeta.
     """
     meta: dict[str, Any] = {
@@ -262,7 +366,17 @@ def compose_delivery_mp4(
         meta["deliveryDurationSec"] = round(target, 2)
 
         ass_path = os.path.join(tmpdir, "overlay.ass")
-        write_overlay_ass(ass_path, payload, target)
+        use_kb = (
+            _use_marketing_ken_burns()
+            and product_image_abs
+            and os.path.isfile(product_image_abs)
+        )
+        if use_kb:
+            write_marketing_ass(ass_path, payload, target)
+            meta["videoStyle"] = "marketing_ken_burns"
+        else:
+            write_overlay_ass(ass_path, payload, target)
+            meta["videoStyle"] = "loop_svd_clip"
 
         audio_proc = os.path.join(tmpdir, "audio.m4a")
         if speech_ok and audio_d > 0:
@@ -299,49 +413,92 @@ def compose_delivery_mp4(
         subs_esc = ass_path.replace("\\", "/").replace(":", r"\:")
         tmp_out = os.path.join(tmpdir, "out_nologo.mp4")
 
-        fc = (
-            f"[0:v]scale=1024:576:force_original_aspect_ratio=decrease,"
-            f"pad=1024:576:(ow-iw)/2:(oh-ih)/2,setsar=1,setpts=PTS-STARTPTS[vb];"
-            f"[vb]subtitles='{subs_esc}'[vout]"
-        )
-
-        subprocess.run(
-            [
-                _ffmpeg_exe(),
-                "-y",
-                "-stream_loop",
-                "-1",
-                "-i",
-                raw_mp4,
-                "-i",
-                audio_proc,
-                "-filter_complex",
-                fc,
-                "-map",
-                "[vout]",
-                "-map",
-                "1:a:0",
-                "-t",
-                str(target),
-                "-c:v",
-                "libx264",
-                "-preset",
-                "fast",
-                "-crf",
-                "23",
-                "-pix_fmt",
-                "yuv420p",
-                "-c:a",
-                "copy",
-                "-movflags",
-                "+faststart",
-                tmp_out,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=600,
-            check=True,
-        )
+        if use_kb:
+            kb_path = os.path.join(tmpdir, "ken_burns.mp4")
+            print(
+                f"[svd_compose] Mode marketing (Ken Burns) depuis {product_image_abs} — {target:.1f}s",
+                flush=True,
+            )
+            ken_burns_from_image(product_image_abs, kb_path, target)
+            fc = f"[0:v]subtitles='{subs_esc}'[vout]"
+            subprocess.run(
+                [
+                    _ffmpeg_exe(),
+                    "-y",
+                    "-i",
+                    kb_path,
+                    "-i",
+                    audio_proc,
+                    "-filter_complex",
+                    fc,
+                    "-map",
+                    "[vout]",
+                    "-map",
+                    "1:a:0",
+                    "-t",
+                    str(target),
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    "fast",
+                    "-crf",
+                    "23",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-c:a",
+                    "copy",
+                    "-movflags",
+                    "+faststart",
+                    tmp_out,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=900,
+                check=True,
+            )
+        else:
+            fc = (
+                f"[0:v]scale=1024:576:force_original_aspect_ratio=decrease,"
+                f"pad=1024:576:(ow-iw)/2:(oh-ih)/2,setsar=1,setpts=PTS-STARTPTS[vb];"
+                f"[vb]subtitles='{subs_esc}'[vout]"
+            )
+            subprocess.run(
+                [
+                    _ffmpeg_exe(),
+                    "-y",
+                    "-stream_loop",
+                    "-1",
+                    "-i",
+                    raw_mp4,
+                    "-i",
+                    audio_proc,
+                    "-filter_complex",
+                    fc,
+                    "-map",
+                    "[vout]",
+                    "-map",
+                    "1:a:0",
+                    "-t",
+                    str(target),
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    "fast",
+                    "-crf",
+                    "23",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-c:a",
+                    "copy",
+                    "-movflags",
+                    "+faststart",
+                    tmp_out,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=600,
+                check=True,
+            )
 
         current = tmp_out
         if logo_abs and os.path.isfile(logo_abs):
