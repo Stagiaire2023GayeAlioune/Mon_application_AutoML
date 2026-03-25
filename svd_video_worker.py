@@ -1,391 +1,451 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Post-traitement livraison : SVD produit ~2–4 s ; on boucle jusqu’à une durée cible,
-voix off (edge-tts) à partir du formulaire, sous-titres ASS, logo optionnel (ffmpeg).
+Worker Stable Video Diffusion (image → vidéo) pour WaaW.
+Appelé par Node : python svd_video_worker.py <chemin_fichier_job.json>
+
+Variables d'environnement utiles :
+  UPLOAD_DIR          — racine uploads (déjà injectée par le process Node parent)
+  HF_HOME             — cache Hugging Face (optionnel)
+  SVD_MODEL_ID        — défaut: stabilityai/stable-video-diffusion-img2vid-xt
+  SVD_FORCE_CPU       — si 1 : forcer le CPU même si CUDA est dispo (tests)
+  SVD_CPU_FP16        — défaut: 1 sur CPU : charge les poids FP16 (moins de RAM)
+  SVD_NUM_FRAMES      — défaut: 14 sur GPU, 6 sur CPU (rapide CPU : 4)
+  SVD_DECODE_CHUNK    — défaut: 4 sur GPU, 1 sur CPU
+  SVD_NUM_INFERENCE_STEPS — défaut: 25 GPU, 12 CPU (moins d’étapes = plus rapide, qualité moindre)
+  SVD_FPS             — images/s à l’export (défaut 7) ; avec SVD_MAX_DURATION_SEC borne la durée
+  SVD_MAX_DURATION_SEC — durée max de la vidéo en secondes (défaut 30) : num_frames ≤ floor(durée×fps)
+  SVD_MAX_MODEL_FRAMES — plafond modèle SVD img2vid-xt (défaut 25)
+  SVD_CPU_THREADS     — défaut: tous les cœurs (accélère un peu PyTorch sur CPU)
+  OPENAI_API_KEY      — optionnel : enrichit motion_bucket_id via un court appel LLM
+  OPENAI_MODEL        — défaut: gpt-4o-mini
+  SVD_DELIVERY_MIN_SEC — durée minimale livrée (défaut 30) : boucle SVD + voix + sous-titres (ffmpeg)
+  SVD_ENABLE_TTS      — 1 (défaut) : voix off edge-tts à partir du formulaire ; 0 : silence
+  SVD_SKIP_COMPOSE    — si 1 : garde seulement le clip SVD court (pas de post-traitement)
+  FFPROBE_PATH        — optionnel (voisin de ffmpeg)
 """
 from __future__ import annotations
 
-import asyncio
-import math
+import gc
+import json
 import os
-import shutil
-import subprocess
-import tempfile
-from typing import Any
-
-_EDGE_VOICES = {
-    "fr": "fr-FR-DeniseNeural",
-    "en": "en-US-JennyNeural",
-    "ar": "ar-SA-ZariyahNeural",
-    "es": "es-ES-ElviraNeural",
-    "de": "de-DE-KatjaNeural",
-    "pt": "pt-BR-FranciscaNeural",
-}
+import sys
+import traceback
 
 
-def _ffmpeg_exe() -> str:
-    return (os.environ.get("FFMPEG_PATH") or "ffmpeg").strip() or "ffmpeg"
+def fail(msg: str, code: int = 1) -> None:
+    print(msg, file=sys.stderr)
+    sys.exit(code)
 
 
-def _ffprobe_exe() -> str:
-    explicit = (os.environ.get("FFPROBE_PATH") or "").strip()
-    if explicit:
-        return explicit
-    main = _ffmpeg_exe()
-    low = main.lower()
-    if low.endswith("ffmpeg.exe"):
-        return main[:-10] + "ffprobe.exe"
-    if main.endswith("ffmpeg"):
-        return main[: -len("ffmpeg")] + "ffprobe"
-    return "ffprobe"
+def load_job(path: str) -> dict:
+    with open(path, "r", encoding="utf8") as f:
+        return json.load(f)
 
 
-def _media_duration_sec(path: str) -> float:
+def upload_root() -> str:
+    base = os.environ.get("UPLOAD_DIR", "").strip()
+    if not base:
+        fail("UPLOAD_DIR manquant dans l'environnement.")
+    return os.path.abspath(base)
+
+
+def abs_media(rel: str | None) -> str | None:
+    if not rel:
+        return None
+    return os.path.normpath(os.path.join(upload_root(), rel.replace("/", os.sep)))
+
+
+def map_payload_to_motion_noise(payload: dict) -> tuple[int, float]:
+    """
+    SVD img2vid ne prend pas de prompt texte : on mappe ton / urgence sur motion_bucket_id et noise_aug_strength.
+    Plages usuelles : motion 1–255 (défaut ~127), noise 0–0.1.
+    """
+    tone = str(payload.get("toneId") or "").lower()
+    vtype = str(payload.get("videoTypeId") or "").lower()
+    motion = 127
+    noise = 0.02
+    if "urgence" in vtype or "flash" in vtype:
+        motion = min(200, motion + 40)
+        noise = 0.04
+    if "douceur" in tone or "calme" in tone:
+        motion = max(40, motion - 35)
+        noise = 0.01
+    if "energie" in tone or "impact" in tone:
+        motion = min(220, motion + 50)
+    return motion, noise
+
+
+def optional_openai_motion(payload: dict) -> int | None:
+    key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not key:
+        return None
     try:
-        r = subprocess.run(
-            [
-                _ffprobe_exe(),
-                "-v",
-                "error",
-                "-show_entries",
-                "format=duration",
-                "-of",
-                "default=noprint_wrappers=1:nokey=1",
-                path,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=120,
-            check=False,
+        import urllib.request
+
+        model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+        text = json.dumps(payload, ensure_ascii=False)[:4000]
+        body = json.dumps(
+            {
+                "model": model,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "Tu réponds uniquement par un entier entre 40 et 220 : motion_bucket_id pour une vidéo produit courte (plus haut = plus dynamique).",
+                    },
+                    {"role": "user", "content": text},
+                ],
+                "temperature": 0.3,
+                "max_tokens": 8,
+            }
+        ).encode("utf8")
+        req = urllib.request.Request(
+            "https://api.openai.com/v1/chat/completions",
+            data=body,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {key}",
+            },
+            method="POST",
         )
-        return float((r.stdout or "0").strip() or 0)
-    except (ValueError, subprocess.TimeoutExpired, OSError):
-        return 0.0
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            data = json.load(resp)
+        raw = data["choices"][0]["message"]["content"].strip()
+        n = int("".join(c for c in raw if c.isdigit()) or "127")
+        return max(40, min(220, n))
+    except Exception:
+        return None
 
 
-def _edge_voice(lang_code: str) -> str:
-    key = (lang_code or "fr")[:2].lower()
-    return _EDGE_VOICES.get(key, _EDGE_VOICES["fr"])
+def write_job_update(job_path: str, job: dict) -> None:
+    from datetime import datetime, timezone
+
+    job["updatedAt"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    with open(job_path, "w", encoding="utf8") as f:
+        json.dump(job, f, ensure_ascii=False, indent=2)
 
 
-def build_spoken_script(payload: dict[str, Any]) -> str:
-    """Texte pour la voix off (limité pour rester fluide)."""
-    lang = (payload.get("language") or "fr")[:2].lower()
-    store = str(payload.get("storeName") or "").strip()
-    product = str(payload.get("productName") or "").strip()
-    price = str(payload.get("price") or "").strip()
-    cur = str(payload.get("currency") or "").strip()
-    destock = str(payload.get("destockPeriod") or "").strip()
-    phone = str(payload.get("phone") or "").strip()
-    loc = str(payload.get("location") or "").strip()
-    country = str(payload.get("country") or "").strip()
-    other = str(payload.get("other") or "").strip()[:400]
-    model = str(payload.get("modelId") or "").strip()
+def main() -> None:
+    if len(sys.argv) < 2:
+        fail("Usage: python svd_video_worker.py <job.json>")
+    job_path = os.path.abspath(sys.argv[1])
+    if not os.path.isfile(job_path):
+        fail(f"Fichier job introuvable: {job_path}")
 
-    price_line = f"{price} {cur}".strip() if price or cur else ""
+    job = load_job(job_path)
+    job_id = job.get("id")
+    payload = job.get("payload") or {}
+    paths = job.get("persistedPaths") or {}
+    product = abs_media(paths.get("productImage"))
+    if not product or not os.path.isfile(product):
+        fail(f"Image produit introuvable: {product}")
 
-    if lang == "en":
-        parts = [
-            "Special offer.",
-            f"{store}. {product}." if store or product else "",
-            f"Price: {price_line}." if price_line else "",
-            f"Valid: {destock}." if destock else "",
-            f"Call {phone}." if phone else "",
-            f"{loc}, {country}." if loc or country else "",
-            other,
-            f"Offer type: {model}." if model else "",
-        ]
-    else:
-        parts = [
-            "Offre spéciale à ne pas manquer.",
-            f"{store}. {product}." if store or product else "",
-            f"Prix : {price_line}." if price_line else "",
-            f"Valable : {destock}." if destock else "",
-            f"Téléphone : {phone}." if phone else "",
-            f"{loc}, {country}." if loc or country else "",
-            other,
-            f"Type d'offre : {model}." if model else "",
-        ]
-    text = " ".join(p for p in parts if p)
-    return text[:4500] if text else "Découvrez notre offre."
+    out_rel = os.path.join("video-generation-output", f"{job_id}.mp4").replace("\\", "/")
+    out_abs = os.path.normpath(os.path.join(upload_root(), out_rel.replace("/", os.sep)))
+    os.makedirs(os.path.dirname(out_abs), exist_ok=True)
 
+    try:
+        import torch
+    except ImportError as e:
+        fail(f"PyTorch non installé: {e}\nInstallez: pip install -r requirements-svd.txt")
 
-def _ass_escape(s: str) -> str:
-    return (
-        str(s)
-        .replace("\\", r"\\")
-        .replace("{", r"\{")
-        .replace("}", r"\}")
-        .replace("\r", "")
-        .replace("\n", r"\N")
+    def cuda_is_usable():
+        """True seulement si PyTorch peut réellement allouer sur CUDA (évite CPU-only + is_available() trompeur)."""
+        if not torch.cuda.is_available():
+            return False
+        try:
+            x = torch.zeros(1, device="cuda")
+            del x
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            return True
+        except RuntimeError:
+            return False
+
+    force_cpu = os.environ.get("SVD_FORCE_CPU", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    cuda_ok = cuda_is_usable()
+    if not cuda_ok and torch.cuda.is_available():
+        print(
+            "[svd_video_worker] CUDA détecté mais non utilisable (PyTorch CPU-only ou DLL CUDA manquantes) — mode CPU.",
+            flush=True,
+        )
+    use_cpu = force_cpu or not cuda_ok
+
+    if use_cpu:
+        try:
+            n_cpu = int(os.environ.get("SVD_CPU_THREADS", "0").strip() or "0")
+            if n_cpu <= 0:
+                n_cpu = os.cpu_count() or 8
+            torch.set_num_threads(max(1, n_cpu))
+            n_interop = max(1, min(8, n_cpu // 2))
+            torch.set_num_interop_threads(n_interop)
+            print(
+                f"[svd_video_worker] PyTorch CPU threads={torch.get_num_threads()} "
+                f"(interop={n_interop})",
+                flush=True,
+            )
+        except Exception as e:
+            print(f"[svd_video_worker] Impossible de régler les threads CPU: {e}", flush=True)
+
+    if use_cpu and not force_cpu:
+        print(
+            "[svd_video_worker] AVERTISSEMENT : CUDA indisponible — exécution sur CPU "
+            "(très lent, forte utilisation RAM). Préférez un GPU NVIDIA en production.",
+            flush=True,
+        )
+    elif use_cpu and force_cpu:
+        print("[svd_video_worker] SVD_FORCE_CPU=1 — mode CPU forcé.", flush=True)
+
+    motion, noise = map_payload_to_motion_noise(payload)
+    llm_motion = optional_openai_motion(payload)
+    if llm_motion is not None:
+        motion = llm_motion
+
+    model_id = os.environ.get(
+        "SVD_MODEL_ID", "stabilityai/stable-video-diffusion-img2vid-xt"
+    )
+    default_frames = "6" if use_cpu else "14"
+    default_chunk = "1" if use_cpu else "4"
+    fps = max(1, int(os.environ.get("SVD_FPS", "7")))
+    max_duration_sec = float(os.environ.get("SVD_MAX_DURATION_SEC", "30"))
+    if max_duration_sec <= 0:
+        max_duration_sec = 30.0
+    model_max_frames = int(os.environ.get("SVD_MAX_MODEL_FRAMES", "25"))
+    max_frames_by_duration = max(1, int(max_duration_sec * fps))
+    num_frames = int(os.environ.get("SVD_NUM_FRAMES", default_frames))
+    num_frames = min(num_frames, max_frames_by_duration, model_max_frames)
+    num_frames = max(1, num_frames)
+    decode_chunk = int(os.environ.get("SVD_DECODE_CHUNK", default_chunk))
+    default_infer = "12" if use_cpu else "25"
+    num_inference_steps = int(
+        os.environ.get("SVD_NUM_INFERENCE_STEPS", default_infer)
     )
 
-
-def write_overlay_ass(path: str, payload: dict[str, Any], duration_sec: float) -> None:
-    """Sous-titres avec les champs principaux du formulaire."""
-    lines = []
-    for label, key in (
-        ("Boutique", "storeName"),
-        ("Produit", "productName"),
-        ("Prix", None),
-        ("Tél.", "phone"),
-        ("Lieu", "location"),
-    ):
-        if key:
-            val = str(payload.get(key) or "").strip()
-        else:
-            p = str(payload.get("price") or "").strip()
-            c = str(payload.get("currency") or "").strip()
-            val = f"{p} {c}".strip()
-        if val:
-            lines.append(f"{label} : {_ass_escape(val)}")
-
-    other = str(payload.get("other") or "").strip()
-    if other:
-        lines.append(_ass_escape(other[:200]))
-
-    body = r"\N".join(lines) if lines else _ass_escape("WaaW")
-
-    end_h = int(duration_sec // 3600)
-    end_m = int((duration_sec % 3600) // 60)
-    end_s = duration_sec % 60
-    end_tc = f"{end_h:d}:{end_m:02d}:{end_s:05.2f}".replace(".", ":")
-
-    content = f"""[Script Info]
-ScriptType: v4.00+
-PlayResX: 1024
-PlayResY: 576
-WrapStyle: 0
-
-[V4+ Styles]
-Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,DejaVu Sans,32,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2,1,2,40,40,36,1
-
-[Events]
-Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-Dialogue: 0,0:00:00.00,{end_tc},Default,,0,0,0,,{{\\an2\\pos(512,500)}}{body}
-"""
-    with open(path, "w", encoding="utf8") as f:
-        f.write(content)
-
-
-async def _edge_tts_save(text: str, out_mp3: str, voice: str) -> None:
-    import edge_tts
-
-    communicate = edge_tts.Communicate(text, voice)
-    await communicate.save(out_mp3)
-
-
-def generate_speech_file(text: str, out_path: str, lang_hint: str) -> bool:
     try:
-        voice = _edge_voice(lang_hint)
-        asyncio.run(_edge_tts_save(text, out_path, voice))
-        return os.path.isfile(out_path) and os.path.getsize(out_path) > 80
-    except Exception as e:
-        print(f"[svd_compose] edge-tts échec: {e}", flush=True)
-        return False
+        from diffusers import StableVideoDiffusionPipeline
+        from diffusers.utils import export_to_video, load_image
+    except ImportError as e:
+        fail(f"diffusers non installé: {e}\n pip install -r requirements-svd.txt")
 
+    device = "cpu" if use_cpu else "cuda"
+    print(
+        f"[svd_video_worker] model={model_id} device={device} motion={motion} "
+        f"noise_aug={noise} num_frames={num_frames} fps={fps} max_duration_sec={max_duration_sec} "
+        f"infer_steps={num_inference_steps}",
+        flush=True,
+    )
 
-def generate_silence_aac(out_path: str, duration_sec: float) -> bool:
-    """Piste silencieuse de secours (AAC dans MP4)."""
-    try:
-        subprocess.run(
-            [
-                _ffmpeg_exe(),
-                "-y",
-                "-f",
-                "lavfi",
-                "-i",
-                f"anullsrc=r=44100:cl=stereo",
-                "-t",
-                str(max(1.0, duration_sec)),
-                "-c:a",
-                "aac",
-                "-b:a",
-                "128k",
-                out_path,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=120,
-            check=True,
-        )
-        return os.path.isfile(out_path)
-    except (subprocess.CalledProcessError, OSError) as e:
-        print(f"[svd_compose] silence ffmpeg: {e}", flush=True)
-        return False
-
-
-def compose_delivery_mp4(
-    raw_mp4: str,
-    final_mp4: str,
-    payload: dict[str, Any],
-    logo_abs: str | None,
-    min_duration_sec: float,
-    enable_tts: bool,
-) -> dict[str, Any]:
-    """
-    Remplace raw_mp4 par une version final_mp4 (même chemin possible : écrit dans tmp puis replace).
-    Retourne métadonnées pour job.svdMeta.
-    """
-    meta: dict[str, Any] = {
-        "composeMinSec": min_duration_sec,
-        "tts": False,
-        "ffmpeg": _ffmpeg_exe(),
+    # Chargement poids : limiter la RAM (serveurs sans GPU souvent peu dotés)
+    _load_kw = {
+        "low_cpu_mem_usage": True,
+        "use_safetensors": True,
     }
 
-    ff = _ffmpeg_exe()
-    if not (os.path.isfile(ff) or shutil.which(ff)):
-        raise RuntimeError(
-            "ffmpeg introuvable (FFMPEG_PATH). Installez ffmpeg pour la livraison ≥30 s + audio."
+    if use_cpu:
+        gc.collect()
+        fp16_cpu = os.environ.get("SVD_CPU_FP16", "1").strip().lower() in (
+            "1",
+            "true",
+            "yes",
         )
+        pipe = None
+        last_err = None
+        if fp16_cpu:
+            try:
+                print(
+                    "[svd_video_worker] Chargement FP16 + safetensors (moins de RAM que float32).",
+                    flush=True,
+                )
+                pipe = StableVideoDiffusionPipeline.from_pretrained(
+                    model_id,
+                    torch_dtype=torch.float16,
+                    variant="fp16",
+                    **_load_kw,
+                )
+            except MemoryError as e:
+                fail(
+                    "Mémoire RAM insuffisante pour charger le modèle (même en FP16).\n"
+                    "Augmentez la RAM, ou déployez sur une machine avec GPU NVIDIA + PyTorch CUDA.\n"
+                    f"Détail: {e}"
+                )
+            except Exception as e:
+                last_err = e
+                print(
+                    f"[svd_video_worker] Échec chargement FP16: {e} — essai float32 + low_cpu_mem_usage.",
+                    flush=True,
+                )
+        if pipe is None:
+            try:
+                gc.collect()
+                pipe = StableVideoDiffusionPipeline.from_pretrained(
+                    model_id,
+                    torch_dtype=torch.float32,
+                    **_load_kw,
+                )
+            except MemoryError as e:
+                fail(
+                    "Mémoire RAM insuffisante pour charger le modèle SVD.\n"
+                    "Augmentez la RAM du serveur, utilisez un GPU avec build PyTorch CUDA, "
+                    "ou définissez SVD_CPU_FP16=1 (défaut) si les poids fp16 sont disponibles.\n"
+                    f"Détail: {e}"
+                )
+            except Exception as e:
+                if last_err:
+                    fail(f"Chargement modèle impossible: {e}\n(précédent: {last_err})")
+                raise
+        pipe.to("cpu")
+        try:
+            pipe.enable_attention_slicing()
+        except Exception:
+            pass
+    else:
+        dtype = torch.float16
+        try:
+            pipe = StableVideoDiffusionPipeline.from_pretrained(
+                model_id,
+                torch_dtype=dtype,
+                variant="fp16",
+                **_load_kw,
+            )
+        except OSError:
+            pipe = StableVideoDiffusionPipeline.from_pretrained(
+                model_id,
+                torch_dtype=dtype,
+                **_load_kw,
+            )
+        pipe.to("cuda")
+        try:
+            pipe.enable_xformers_memory_efficient_attention()
+        except Exception:
+            pass
 
-    spoken = build_spoken_script(payload)
-    lang = str(payload.get("language") or "fr")
+    from PIL import Image as PILImage
 
-    tmpdir = tempfile.mkdtemp(prefix="svd_compose_")
+    image = load_image(product)
+    if image.mode != "RGB":
+        image = image.convert("RGB")
+    # Format attendu par SVD img2vid (16:9)
     try:
-        speech_mp3 = os.path.join(tmpdir, "speech.mp3")
-        speech_ok = False
-        if enable_tts and spoken:
-            speech_ok = generate_speech_file(spoken, speech_mp3, lang)
+        resample = PILImage.Resampling.LANCZOS
+    except AttributeError:
+        resample = PILImage.LANCZOS
+    image = image.resize((1024, 576), resample)
 
-        audio_d = _media_duration_sec(speech_mp3) if speech_ok else 0.0
-        if not speech_ok:
-            meta["tts"] = False
-            meta["ttsNote"] = "silence ou edge-tts indisponible"
-        else:
-            meta["tts"] = True
-            meta["ttsDurationSec"] = round(audio_d, 2)
-
-        target = max(float(min_duration_sec), math.ceil(audio_d) + 0.75 if audio_d > 0 else float(min_duration_sec))
-        meta["deliveryDurationSec"] = round(target, 2)
-
-        ass_path = os.path.join(tmpdir, "overlay.ass")
-        write_overlay_ass(ass_path, payload, target)
-
-        audio_proc = os.path.join(tmpdir, "audio.m4a")
-        if speech_ok and audio_d > 0:
-            # Étendre ou couper l’audio à target
-            if audio_d >= target - 0.05:
-                filt = f"[0:a]atrim=0:{target},asetpts=PTS-STARTPTS[a]"
-            else:
-                filt = f"[0:a]apad=whole_dur={target},atrim=0:{target},asetpts=PTS-STARTPTS[a]"
-            subprocess.run(
-                [
-                    _ffmpeg_exe(),
-                    "-y",
-                    "-i",
-                    speech_mp3,
-                    "-filter_complex",
-                    filt,
-                    "-map",
-                    "[a]",
-                    "-c:a",
-                    "aac",
-                    "-b:a",
-                    "192k",
-                    audio_proc,
-                ],
-                capture_output=True,
-                text=True,
-                timeout=300,
-                check=True,
-            )
-        else:
-            if not generate_silence_aac(audio_proc, target):
-                raise RuntimeError("Impossible de générer la piste audio.")
-
-        subs_esc = ass_path.replace("\\", "/").replace(":", r"\:")
-        tmp_out = os.path.join(tmpdir, "out_nologo.mp4")
-
-        fc = (
-            f"[0:v]scale=1024:576:force_original_aspect_ratio=decrease,"
-            f"pad=1024:576:(ow-iw)/2:(oh-ih)/2,setsar=1,setpts=PTS-STARTPTS[vb];"
-            f"[vb]subtitles='{subs_esc}'[vout]"
+    # Même device que le pipeline (bug corrigé : ne pas forcer cuda si mode CPU)
+    generator = torch.Generator(device=device).manual_seed(42)
+    _call_kw = dict(
+        num_frames=num_frames,
+        decode_chunk_size=decode_chunk,
+        motion_bucket_id=motion,
+        noise_aug_strength=noise,
+        generator=generator,
+    )
+    try:
+        result = pipe(
+            image,
+            num_inference_steps=num_inference_steps,
+            **_call_kw,
         )
+    except TypeError:
+        # Anciennes versions diffusers sans num_inference_steps
+        result = pipe(image, **_call_kw)
+    frames = result.frames[0]
+    if hasattr(frames, "__len__") and len(frames) > num_frames:
+        frames = frames[:num_frames]
 
-        subprocess.run(
-            [
-                _ffmpeg_exe(),
-                "-y",
-                "-stream_loop",
-                "-1",
-                "-i",
-                raw_mp4,
-                "-i",
-                audio_proc,
-                "-filter_complex",
-                fc,
-                "-map",
-                "[vout]",
-                "-map",
-                "1:a:0",
-                "-t",
-                str(target),
-                "-c:v",
-                "libx264",
-                "-preset",
-                "fast",
-                "-crf",
-                "23",
-                "-pix_fmt",
-                "yuv420p",
-                "-c:a",
-                "copy",
-                "-movflags",
-                "+faststart",
-                tmp_out,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=600,
-            check=True,
-        )
+    export_to_video(frames, out_abs, fps=fps)
 
-        current = tmp_out
-        if logo_abs and os.path.isfile(logo_abs):
-            with_logo = os.path.join(tmpdir, "out_logo.mp4")
-            subprocess.run(
-                [
-                    _ffmpeg_exe(),
-                    "-y",
-                    "-i",
-                    current,
-                    "-loop",
-                    "1",
-                    "-i",
-                    logo_abs,
-                    "-filter_complex",
-                    "[1:v]format=rgba,scale=160:-1[lg];[0:v][lg]overlay=W-w-16:16",
-                    "-map",
-                    "0:a",
-                    "-t",
-                    str(target),
-                    "-c:v",
-                    "libx264",
-                    "-preset",
-                    "fast",
-                    "-crf",
-                    "23",
-                    "-pix_fmt",
-                    "yuv420p",
-                    "-c:a",
-                    "copy",
-                    with_logo,
-                ],
-                capture_output=True,
-                text=True,
-                timeout=600,
-                check=True,
+    if not os.path.isfile(out_abs):
+        fail("export_to_video n'a pas produit de fichier MP4.")
+
+    skip_compose = os.environ.get("SVD_SKIP_COMPOSE", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    compose_meta: dict | None = None
+    if not skip_compose:
+        try:
+            from svd_video_compose import compose_delivery_mp4
+
+            min_delivery = float(os.environ.get("SVD_DELIVERY_MIN_SEC", "30"))
+            if min_delivery <= 0:
+                min_delivery = 30.0
+            tts_on = os.environ.get("SVD_ENABLE_TTS", "1").strip().lower() not in (
+                "0",
+                "false",
+                "no",
             )
-            current = with_logo
-            meta["logoOverlay"] = True
+            logo_abs = abs_media(paths.get("logo"))
+            tmp_comp = out_abs + ".compose-tmp.mp4"
+            compose_meta = compose_delivery_mp4(
+                out_abs,
+                tmp_comp,
+                payload,
+                logo_abs if logo_abs and os.path.isfile(logo_abs) else None,
+                min_delivery,
+                tts_on,
+            )
+            os.replace(tmp_comp, out_abs)
+            print(
+                f"[svd_video_worker] Compose livraison ~{compose_meta.get('deliveryDurationSec')}s "
+                f"(tts={compose_meta.get('tts')})",
+                flush=True,
+            )
+        except Exception as e:
+            if os.path.isfile(out_abs + ".compose-tmp.mp4"):
+                try:
+                    os.remove(out_abs + ".compose-tmp.mp4")
+                except OSError:
+                    pass
+            fail(
+                "Post-traitement ffmpeg / livraison longue durée échoué.\n"
+                "Installez ffmpeg (+ libass pour les sous-titres), edge-tts (pip), "
+                "ou définissez SVD_SKIP_COMPOSE=1 pour ne garder que le clip SVD court.\n"
+                f"Détail: {e}"
+            )
 
-        shutil.move(current, final_mp4)
-        return meta
-    except subprocess.CalledProcessError as e:
-        err = (e.stderr or e.stdout or "")[:1500]
-        raise RuntimeError(f"ffmpeg compose: {err}") from e
-    finally:
-        shutil.rmtree(tmpdir, ignore_errors=True)
+    job["status"] = "completed"
+    job["outputVideoRelativePath"] = out_rel
+    job["error"] = None
+    job["svdMeta"] = {
+        "modelId": model_id,
+        "device": device,
+        "motionBucketId": motion,
+        "noiseAugStrength": noise,
+        "numFrames": num_frames,
+        "fps": fps,
+        "maxDurationSec": max_duration_sec,
+        "maxFramesByDuration": max_frames_by_duration,
+        "modelMaxFrames": model_max_frames,
+        "numInferenceSteps": num_inference_steps,
+        "decodeChunkSize": decode_chunk,
+        "usedOpenAiMotion": llm_motion is not None,
+        "cpuMode": use_cpu,
+        "composeSkipped": skip_compose,
+        "compose": compose_meta,
+    }
+    write_job_update(job_path, job)
+    print(f"[svd_video_worker] OK -> {out_abs}", flush=True)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(tb, file=sys.stderr)
+        try:
+            job_path = os.path.abspath(sys.argv[1])
+            if os.path.isfile(job_path):
+                job = load_job(job_path)
+                job["status"] = "failed"
+                job["error"] = (str(e) + "\n" + tb)[:2000]
+                write_job_update(job_path, job)
+        except Exception:
+            pass
+        fail(str(e), 1)
