@@ -2,7 +2,15 @@
 # -*- coding: utf-8 -*-
 """
 Interface Streamlit — même logique de formulaire que WaaW (vidéo publication) + génération SVD.
-Lance : streamlit run svd_streamlit_app.py  (depuis ce dossier ou avec PYTHONPATH)
+
+Lancer (depuis ce dossier scripts/) :
+  streamlit run svd_streamlit_app.py
+
+Ne pas ouvrir http://172.18.x.x dans le navigateur (IP Docker interne) : utiliser
+  http://127.0.0.1:8501  ou  http://localhost:8501
+
+Config : .streamlit/config.toml à côté de ce fichier.
+Env local : copier backend/.env.local.example → backend/.env.local
 
 Prérequis : venv avec torch (CUDA), diffusers, ffmpeg dans le PATH pour la durée min. 30 s.
 """
@@ -18,6 +26,20 @@ from pathlib import Path
 
 # Répertoire de travail isolé (uploads + jobs)
 _SCRIPT_DIR = Path(__file__).resolve().parent
+
+
+def _load_env_files() -> None:
+    """Développement local : backend/.env.local puis backend/.env (sans écraser l’existant)."""
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+    backend_dir = _SCRIPT_DIR.parent
+    load_dotenv(backend_dir / ".env.local", override=False)
+    load_dotenv(backend_dir / ".env", override=False)
+
+
+_load_env_files()
 _WORK_ROOT = _SCRIPT_DIR / "streamlit_work"
 _UPLOAD_ROOT = _WORK_ROOT / "uploads"
 _JOBS_DIR = _UPLOAD_ROOT / "video-generation-jobs"
@@ -181,6 +203,11 @@ def main() -> None:
     st.caption(
         "Formulaire aligné sur WaaW. Le modèle SVD produit un clip court ; "
         f"la sortie est prolongée à **minimum {MIN_VIDEO_DURATION_SEC:g}s** avec ffmpeg (boucle)."
+    )
+    st.info(
+        "**Accès :** ouvre l’app dans le navigateur à **http://127.0.0.1:8501** "
+        "(ou `localhost:8501`). N’utilise pas une adresse **172.18.x.x** — c’est une IP interne Docker, "
+        "souvent vide depuis ton PC."
     )
 
     _ensure_dirs()
