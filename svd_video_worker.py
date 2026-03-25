@@ -23,6 +23,8 @@ Variables d'environnement utiles :
   SVD_ENABLE_TTS      — 1 (défaut) : voix off edge-tts à partir du formulaire ; 0 : silence
   SVD_SKIP_COMPOSE    — si 1 : garde seulement le clip SVD court (pas de post-traitement)
   FFPROBE_PATH        — optionnel (voisin de ffmpeg)
+  SVD_MARKETING_MODE  — ken_burns (défaut) : vidéo pub fluide depuis l’image produit ; loop : boucle du clip SVD
+  SVD_MARKETING_FPS   — ips pour le Ken Burns (défaut 30)
 """
 from __future__ import annotations
 
@@ -389,6 +391,7 @@ def main() -> None:
                 logo_abs if logo_abs and os.path.isfile(logo_abs) else None,
                 min_delivery,
                 tts_on,
+                product_image_abs=product,
             )
             os.replace(tmp_comp, out_abs)
             print(
