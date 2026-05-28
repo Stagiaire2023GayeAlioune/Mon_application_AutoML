@@ -145,10 +145,15 @@ st.sidebar.markdown("""
 ### Alioune Gaye
 **Data Scientist & Full-Stack AI Developer**
 
-Accompagnement des entreprises sur :
-- IA appliquée
-- Automatisation métier
-- Développement web & data products
+J'accompagne les entreprises dans la conception et le déploiement de solutions digitales à fort impact.
+
+**Domaines d'accompagnement :**
+- IA appliquée (LLM, OCR, RAG, analytique avancée)
+- Automatisation métier (workflows, APIs, intégrations, CRON)
+- Développement web & data products (plateformes métier, dashboards, outils internes)
+- Structuration data & pilotage de performance (KPI, reporting, décisionnel)
+
+**Objectif :** transformer les besoins métiers en produits robustes, scalables et orientés résultats.
 """)
 
 # -----------------------------------------------------
@@ -352,13 +357,27 @@ elif page == "À propos de moi":
     """)
 
     st.markdown("### 💻 Langages")
-    st.markdown("Python, TypeScript, JavaScript, SQL, R, C++, Stata")
+    st.markdown("""
+    - **Production & IA :** Python, TypeScript, SQL  
+    - **Applications web :** JavaScript  
+    - **Analyse statistique :** R, Stata  
+    - **Programmation système :** C++
+    """)
 
     st.markdown("### 📊 Outils de visualisation")
-    st.markdown("Power BI, Streamlit, Tableau, Shiny, Excel")
+    st.markdown("""
+    - **BI & reporting exécutif :** Power BI, Tableau  
+    - **Dashboards interactifs :** Streamlit, Shiny  
+    - **Analyse opérationnelle :** Excel (modélisation, suivi KPI, reporting)
+    """)
 
     st.markdown("### ☁️ Cloud & Collaboration")
-    st.markdown("Azure, Google Cloud, AWS (S3), GitHub, Postman, Notion, Jira")
+    st.markdown("""
+    - **Cloud :** Azure, Google Cloud Platform, AWS (S3)  
+    - **Versioning & qualité :** GitHub, revues de code, gestion de versions  
+    - **APIs & tests :** Postman  
+    - **Collaboration projet :** Notion, Jira
+    """)
 
 # -----------------------------------------------------
 # PAGE 3 : MES PROJETS
@@ -435,27 +454,6 @@ elif page == "Mes projets":
         <a href="https://applicationtableaudebordanalyserh.streamlit.app/">Application</a></div>
         """, unsafe_allow_html=True)
 
-    st.markdown("### 🔬 Projets avancés")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.image("crm_synergie.png", caption="CRM Synergie Marketing Group", use_container_width=True)
-        st.markdown("""
-        <div class="project-box"><h3>CRM Synergie Marketing Group</h3>
-        <p>CRM complet pour la gestion clients, ventes et commissions. Stack : Node.js, React, PostgreSQL, WebSocket.</p></div>
-        """, unsafe_allow_html=True)
-    with col2:
-        st.image("api_ocr.png", caption="API OCR & LLM", use_container_width=True)
-        st.markdown("""
-        <div class="project-box"><h3>API OCR & LLM pour documents immobiliers</h3>
-        <p>Extraction automatique de données structurées à partir de PDF et images grâce à l’OCR et aux LLM.</p></div>
-        """, unsafe_allow_html=True)
-    with col3:
-        st.image("ai_juridique.png", caption="Agent IA Juridique", use_container_width=True)
-        st.markdown("""
-        <div class="project-box"><h3>Agent IA Juridique Multilingue</h3>
-        <p>Assistant IA bilingue (français/arabe) basé sur un pipeline RAG, embeddings FAISS et OpenAI pour répondre à des questions juridiques à partir de documents internes.</p></div>
-        """, unsafe_allow_html=True)
-
     st.markdown("### 📱 Projets plateformes & automatisation")
     col1, col2 = st.columns(2)
     with col1:
@@ -489,6 +487,16 @@ elif page == "Mes projets":
         <p><strong>Bénéfices métier :</strong> meilleure visibilité des produits, conversion simplifiée, standardisation des commandes (PDF + WhatsApp) et mise en relation plus fluide.</p>
         <p><strong>Stack technique :</strong> Next.js/React/TypeScript/Tailwind (FR-EN), SQL Server pour les formulaires et serveur Node.js pour WhatsApp + génération PDF.</p>
         <p><a href="https://vetafrik.com/fr" target="_blank">Accéder au site Vetafrik</a></p></div>
+        """, unsafe_allow_html=True)
+        st.image("api_ocr.png", caption="API OCR & LLM", use_container_width=True)
+        st.markdown("""
+        <div class="project-box"><h3>API OCR & LLM pour documents immobiliers</h3>
+        <p>Extraction automatique de données structurées à partir de PDF et images grâce à l’OCR et aux LLM.</p></div>
+        """, unsafe_allow_html=True)
+        st.image("ai_juridique.png", caption="Agent IA Juridique", use_container_width=True)
+        st.markdown("""
+        <div class="project-box"><h3>Agent IA Juridique Multilingue</h3>
+        <p>Assistant IA bilingue (français/arabe) basé sur un pipeline RAG, embeddings FAISS et OpenAI pour répondre à des questions juridiques à partir de documents internes.</p></div>
         """, unsafe_allow_html=True)
 
     st.markdown("### 🧾 Plateforme CRM métier")
