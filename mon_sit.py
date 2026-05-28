@@ -489,11 +489,15 @@ elif page == "Mes projets":
         <p><strong>Stack technique :</strong> Next.js/React/TypeScript/Tailwind (FR-EN), SQL Server pour les formulaires et serveur Node.js pour WhatsApp + génération PDF.</p>
         <p><a href="https://vetafrik.com/fr" target="_blank">Accéder au site Vetafrik</a></p></div>
         """, unsafe_allow_html=True)
+
+    api_col1, api_col2 = st.columns(2)
+    with api_col1:
         st.image("api_ocr.png", caption="API OCR & LLM", use_container_width=True)
         st.markdown("""
         <div class="project-box"><h3>API OCR & LLM pour documents immobiliers</h3>
         <p>Extraction automatique de données structurées à partir de PDF et images grâce à l’OCR et aux LLM.</p></div>
         """, unsafe_allow_html=True)
+    with api_col2:
         st.image("ai_juridique.png", caption="Agent IA Juridique", use_container_width=True)
         st.markdown("""
         <div class="project-box"><h3>Agent IA Juridique Multilingue</h3>
