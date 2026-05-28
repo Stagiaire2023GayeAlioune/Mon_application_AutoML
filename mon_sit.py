@@ -151,6 +151,7 @@ J'accompagne les entreprises dans la conception et le déploiement de solutions 
 - IA appliquée (LLM, OCR, RAG, analytique avancée)
 - Automatisation métier (workflows, APIs, intégrations, CRON)
 - Développement web & data products (plateformes métier, dashboards, outils internes)
+- Développement mobile Android/iOS (React Native, Expo, Flutter)
 - Structuration data & pilotage de performance (KPI, reporting, décisionnel)
 
 **Objectif :** transformer les besoins métiers en produits robustes, scalables et orientés résultats.
@@ -276,9 +277,9 @@ if page == "Les services que je propose":
     with col1:
         st.markdown("""<div class="service-box"><div class="emoji">💻</div><h3>Développement Backend</h3><p>Node.js, Express, TypeScript, Django, PostgreSQL/SQL Server, authentification sécurisée et services temps réel.</p></div>""", unsafe_allow_html=True)
     with col2:
-        st.markdown("""<div class="service-box"><div class="emoji">🎨</div><h3>Frontend Web & Mobile</h3><p>React, Next.js, Vite, Tailwind, shadcn/ui, React Native Expo pour des expériences fluides sur web et mobile.</p></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="service-box"><div class="emoji">🎨</div><h3>Frontend Web & Mobile</h3><p>React, Next.js, Vite, Tailwind, shadcn/ui, React Native, Expo et Flutter pour des expériences fluides sur web, Android et iOS.</p></div>""", unsafe_allow_html=True)
     with col3:
-        st.markdown("""<div class="service-box"><div class="emoji">🧩</div><h3>Intégrations Métier</h3><p>WhatsApp, OAuth, Google APIs, SendGrid/Nodemailer, paiement, PDF/CSV/FEC/SEPA et outils SaaS.</p></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="service-box"><div class="emoji">🧩</div><h3>Intégrations Métier</h3><p>WhatsApp, OAuth, Google APIs, SendGrid/Nodemailer, paiements (Stripe, PayPal, Wave), PDF/CSV/FEC/SEPA et outils SaaS.</p></div>""", unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -299,9 +300,9 @@ if page == "Les services que je propose":
     # Réalisations récentes
     st.markdown("### 🚀 Réalisations récentes")
     st.markdown("""
-    - **CRM Synergie Marketing Group** : système complet de gestion clients et ventes (Node.js, React, PostgreSQL, WebSocket).  
-    - **API OCR & LLM Immobilier** : extraction et validation automatique de documents administratifs (CNI, bulletins, contrats).  
-    - **Agent IA Juridique Multilingue** : assistant intelligent basé sur un pipeline RAG (OpenAI + FAISS).  
+    - **CRM Synergie Marketing Group** : conception d'un CRM métier complet pour piloter le cycle commercial (prospects, clients, ventes, commissions, suivi opérationnel) avec une architecture moderne **Node.js + React + PostgreSQL + WebSocket**.  
+    - **API OCR & LLM Immobilier** : développement d'une API intelligente d'extraction, de validation et de structuration de documents administratifs (CNI, bulletins, contrats) pour réduire le temps de traitement et fiabiliser les dossiers.  
+    - **Agent IA Juridique Multilingue** : mise en place d'un assistant IA français/arabe basé sur un pipeline **RAG (OpenAI + FAISS)**, capable d'interroger une base documentaire interne et de fournir des réponses contextuelles exploitables.  
     """)
 
 # -----------------------------------------------------
@@ -347,10 +348,10 @@ elif page == "À propos de moi":
     - **IA & Data Science :** Machine Learning, Deep Learning, NLP, Vision, séries temporelles, RAG, embeddings (FAISS), OCR (Tesseract), OpenAI, Gemini  
     - **Backend :** Node.js, Express, TypeScript, Django, sessions/auth, middleware métier, APIs REST  
     - **Frontend Web :** React 18, Next.js, Vite, Tailwind CSS, shadcn/ui, Radix UI, TanStack Query  
-    - **Mobile :** React Native, Expo (Android/iOS)  
+    - **Mobile :** React Native, Expo, Flutter (Android/iOS)  
     - **Temps réel :** WebSocket, notifications, traitements asynchrones, workers, Bull/BullMQ  
     - **Base de données :** PostgreSQL, SQL Server, MySQL, Drizzle ORM, modélisation de schémas, migrations  
-    - **Messaging & intégrations :** WhatsApp Web, OAuth, Google APIs/Calendar, SendGrid, Nodemailer  
+    - **Messaging & intégrations :** WhatsApp Web, OAuth, Google APIs/Calendar, SendGrid, Nodemailer, paiements Stripe/PayPal/Wave  
     - **Documents & exports :** PDF/CSV/FEC/SEPA, docxtemplater, html2pdf, génération de rapports automatisés  
     - **DevOps & qualité :** Git/GitHub, Docker, CI/CD, tests, logging, monitoring, optimisation des performances  
     - **Automatisation :** CRON métiers, scripts Python, pipelines ETL et orchestration de tâches
