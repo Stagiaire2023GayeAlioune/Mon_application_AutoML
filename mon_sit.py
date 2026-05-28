@@ -326,6 +326,17 @@ elif page == "À propos de moi":
     - **Formation Développeur Full-Stack** : conception d'applications web, API, bases de données, intégration et bonnes pratiques de production
     """)
 
+    st.markdown("### 🧪 Expérience de fin d'études (UCBL)")
+    st.image("LOGO.png", caption="Institut Lumière Matière", width=220)
+    st.markdown("""
+    - **Cadre :** stage de fin d'études de Master 2 SMSD réalisé au laboratoire **Institut Lumière Matière (ILM)**, au sein de l'équipe **FENNEC** (Villeurbanne, Rhone-Alpes, France)  
+    - **Encadrement :** tuteur entreprise **Matteo Martini** et tuteur école **Gabriela Ciuperca**  
+    - **Sujet :** validation d'une approche innovante combinant **fluorescence en temps résolu (TRF)** et **intelligence artificielle** pour la surveillance en temps réel des polluants dans les effluents industriels et municipaux  
+    - **Contributions clés :** préparation/analyse des données spectrales, développement de pipelines **Machine Learning** et **Deep Learning (CNN)** pour l'identification et la quantification de polluants  
+    - **Outils mobilisés :** Python, R, Streamlit, méthodes de classification, automatisation de protocoles et industrialisation des expérimentations  
+    - **Impact :** obtention de résultats prometteurs pour l'identification/quantification des polluants et contribution à un dispositif d'aide à la décision environnementale en temps réel
+    """)
+
     st.markdown("### 🧭 Domaines d'intervention")
     st.markdown("""
     - Développement de plateformes métier (CRM, marketing automation, outils de pilotage)
