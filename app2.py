@@ -1,605 +1,555 @@
 import streamlit as st
-from PIL import Image, ImageOps
-import ydata_profiling 
-import numpy as np
 
-from streamlit_pandas_profiling import st_profile_report
-import pandas as pd
-from pycaret.regression import setup as setup_reg, compare_models as compare_models_reg , predict_model as predict_model_reg, plot_model as plot_model_reg,create_model as create_model_reg
-from pycaret.classification import setup, compare_models, blend_models, finalize_model, predict_model, plot_model,create_model
-from pycaret.classification import *
-#from pycaret.regression import *
-from pycaret import *
-import tensorflow as tf
-import keras.preprocessing.image
-from keras.models import Sequential
-from keras import layers
-from keras.layers import Conv2D, MaxPooling2D, Dropout, Flatten, Dense, Activation,GlobalMaxPooling2D
-from keras import applications
-from keras.preprocessing.image import ImageDataGenerator
-from keras import optimizers
-from keras.applications import VGG16
-from keras.models import Model
-import os;
-#import cv2 
-import seaborn as sns
-from PIL import Image
-from tensorflow import keras
-import tensorflow as tf
-from sklearn.model_selection import train_test_split
-from keras.models import Sequential
-from keras.layers import Conv2D,MaxPooling2D,Dense,Flatten,Dropout
-import os
-#from tensorflow.keras.preprocessing import image
+# -----------------------------------------------------
+# CONFIGURATION GLOBALE
+# -----------------------------------------------------
+st.set_page_config(page_title="Data Workers", layout="wide")
 
+# Effet de transition globale entre les pages
+st.markdown("""
+    <style>
+    :root {
+        --primary: #ec407a;
+        --primary-dark: #c2185b;
+        --accent: #7c4dff;
+        --bg-soft: #f7f9fc;
+        --text-main: #1f2937;
+        --text-muted: #6b7280;
+        --card-border: #e5e7eb;
+    }
 
-#url = "https://www.linkedin.com/in/sokhna-faty-bousso-110891190/"
-@st.cache_data
-def load_data(file):
-    data=pd.read_csv(file)
-    return data
-def main():
-    st.markdown('<h1 style="text-align: center;">Identification type de polluant</h1>', unsafe_allow_html=True)
-    st.markdown('<h1 style="text-align: center;">Base de donnée</h1>',unsafe_allow_html=True)
-    col3,col4=st.sidebar.columns(2)
-    col3.image("https://ilm.univ-lyon1.fr/templates/mojito/images/logo.jpg", use_column_width=True)
-    col4.image("https://formation-professionnelle.universite-lyon.fr/var/site/storage/images/3/3/5/0/533-17-fre-FR/Lyon-1-Claude-Bernard.png", use_column_width=True)
-    #st.sidebar.write("<p style='text-align: center;'> Sokhna Faty Bousso : Stagiaire ILM (%s)</p>" % url, unsafe_allow_html=True)
-    st.sidebar.write("<p style='text-align: center;'>Apprentissage par régression ou classification.</p>", unsafe_allow_html=True)
-    st.sidebar.markdown("<p style='text-align: center;'>Nous allons procéder comme suit :</p>", unsafe_allow_html=True)
-    st.sidebar.markdown("<p style='text-align: center;'>1 - Chargement des données</p>", unsafe_allow_html=True)
-    st.sidebar.markdown("<p style='text-align: center;'>2 - Analyse exploratoire des données</p>", unsafe_allow_html=True)
-    st.sidebar.markdown("<p style='text-align: center;'>3 - Sélection de la cible et de la méthode d'apprentissage</p>", unsafe_allow_html=True)
-    st.sidebar.markdown("<p style='text-align: center;'>4 - Construction du modèle</p>", unsafe_allow_html=True)
-    st.sidebar.markdown("<p style='text-align: center;'>5 - Téléchargement du modèle</p>", unsafe_allow_html=True)
-    st.sidebar.markdown("<p style='text-align: center;'>6 - Prédiction</p>", unsafe_allow_html=True)
-    file = st.file_uploader("entrer les données ", type=['csv'])
-    if file is not None:
-        df=load_data(file)
-        #type=st.selectbox("selectionner le target",["Homogene","Heterogene"])
-        n=len(df.columns)
-        X=df[df.columns[:(n-1)]]# on prend les variables numériques 
-        y=df[df.columns[-1]] # le target
-        st.dataframe(df.head())
-        pr = df.profile_report()
-        if st.button('statistique descriptive'):
-             st_profile_report(pr)
-        if st.button('Save'):
-            df.to_csv('data.csv')
-        target=st.selectbox("selectionner le target",df.columns)
-        methode=st.selectbox("selectionner la méthode ",["Regression","Classification"])
-        df=df.dropna(subset=target)
-        if methode=="Classification":
-            if st.button(" les performances du modèle "):
-                  setup_data = setup(data=df,target = target,
-                        train_size =0.75,categorical_features =None,
-                        normalize = False,normalize_method = None,fold=5)
-                  r=compare_models(round=2)
-                  save_model(r,"best_model")
-                  st.success("youpiiiii classification fonctionne \U0001F604")
-                  st.write("Performances du modèle :")
-                
-                  final_model1 = create_model(r,fold=5,round=2)
-                  col5,col6=st.columns(2)
-                  col5.write('AUC')
-                  plot_model(final_model1,plot='auc',save=True)
-                  col5.image("AUC.png")
-                  col6.write("class_report")
-                  plot_model(final_model1,plot='class_report',save=True)
-                  col6.image("Class Report.png")
-                  
-                  col7,col8=st.columns(2)
-                  col7.write("confusion_matrix")
-                  plot_model(final_model1,plot='confusion_matrix',save=True)
-                  col7.image("Confusion Matrix.png")
-                  tuned_model = tune_model(final_model1,optimize='AUC',round=2,n_iter=10);# optimiser le modéle
-                  col8.write("boundary")
-                  plot_model(final_model1 , plot='boundary',save=True)
-                  col8.image("Decision Boundary.png")
-                    
-                  col9,col10=st.columns(2)
-                  col9.write("feature")
-                  plot_model(estimator = tuned_model, plot = 'feature',save=True)
-                  col9.image("Feature Importance.png")
-                  col10.write("learning")
-                  plot_model(estimator = final_model1, plot = 'learning',save=True)
-                  col10.image("Learning Curve.png")
-                  with open("best_model.pkl",'rb') as f :
-                       st.download_button("Telecharger le pipline du modele" , f, file_name="best_model.pkl")
-          
-          
-        if methode=="Regression":
-            if st.button("les performances du modèle "):
-                  setup_data = setup_reg(data=df,target = target,
-                        train_size =0.75,categorical_features =None,
-                        normalize = False,normalize_method = None)
-                  r=compare_models_reg()
-                  save_model(r,"best_model")
-                  st.success("youpiiiii classition fonctionne")
-                  final_model1 = create_model_reg(r)
-    else:
-        st.image("https://ilm.univ-lyon1.fr//images/slides/SLIDER10.png")
+    .stApp {
+        background: linear-gradient(180deg, #ffffff 0%, var(--bg-soft) 100%);
+        color: var(--text-main);
+    }
 
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        max-width: 1250px;
+    }
+
+    .main {
+        opacity: 0;
+        animation: fadeInAnimation ease 1.2s;
+        animation-fill-mode: forwards;
+    }
+
+    @keyframes fadeInAnimation {
+        0% { opacity: 0; transform: translateY(10px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Cartes services/projets */
+    .service-box, .project-box {
+        background: #ffffff;
+        border: 1px solid var(--card-border);
+        border-radius: 16px;
+        padding: 18px 18px 14px 18px;
+        margin-bottom: 14px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+        min-height: 170px;
+    }
+
+    .service-box h3, .project-box h3 {
+        margin-top: 4px;
+        margin-bottom: 10px;
+        color: #111827;
+        font-size: 1.1rem;
+    }
+
+    .service-box p, .project-box p {
+        color: var(--text-muted);
+        line-height: 1.5;
+        margin-bottom: 9px;
+        font-size: 0.96rem;
+    }
+
+    .emoji {
+        font-size: 1.45rem;
+        margin-bottom: 8px;
+    }
+
+    .project-box a {
+        color: var(--primary-dark);
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .project-box a:hover {
+        text-decoration: underline;
+    }
+
+    /* Hover stylé pour les services et projets */
+    .service-box:hover, .project-box:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 24px rgba(124, 77, 255, 0.16);
+        border-color: #d8ccff;
+        transition: all 0.25s ease-in-out;
+    }
+
+    /* Images plus professionnelles */
+    [data-testid="stImage"] img {
+        border-radius: 14px;
+        border: 1px solid #e8eaf0;
+        box-shadow: 0 5px 16px rgba(15, 23, 42, 0.10);
+    }
+
+    /* Titres */
+    h1, h2, h3 {
+        letter-spacing: -0.2px;
+    }
+
+    /* Sidebar */
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #141a2e 0%, #1f2940 100%);
+    }
+
+    section[data-testid="stSidebar"] * {
+        color: #f3f4f6 !important;
+    }
+
+    section[data-testid="stSidebar"] .stRadio > label {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 8px 10px;
+        border-radius: 10px;
+        margin-bottom: 6px;
+    }
+    </style>
+
+    <script>
+    const observer = new MutationObserver(() => {
+        const main = document.querySelector('.main');
+        if (main) {
+            main.style.opacity = '0';
+            main.style.animation = 'none';
+            void main.offsetWidth;
+            main.style.animation = 'fadeInAnimation ease 1.2s';
+            main.style.animationFillMode = 'forwards';
+        }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    </script>
+""", unsafe_allow_html=True)
+
+# Navigation latérale
+page = st.sidebar.radio("Navigation", ["Les services que je propose", "À propos de moi", "Mes projets"])
+st.sidebar.markdown("---")
+st.sidebar.markdown("""
+### Alioune Gaye
+**Data Scientist & Full-Stack AI Developer**
+
+J'accompagne les entreprises dans la conception et le déploiement de solutions digitales à fort impact.
+
+**Domaines d'accompagnement :**
+- IA appliquée (LLM, OCR, RAG, analytique avancée)
+- Automatisation métier (workflows, APIs, intégrations, CRON)
+- Développement web & data products (plateformes métier, dashboards, outils internes)
+- Développement mobile Android/iOS (React Native, Expo, Flutter)
+- Structuration data & pilotage de performance (KPI, reporting, décisionnel)
+
+**Objectif :** transformer les besoins métiers en produits robustes, scalables et orientés résultats.
+""")
+
+# -----------------------------------------------------
+# PAGE 1 : LES SERVICES QUE JE PROPOSE
+# -----------------------------------------------------
+if page == "Les services que je propose":
+    # --- Bannière Hero ---
+    st.markdown("""
+        <style>
+        .hero {
+            background: linear-gradient(135deg, #f25287 0%, #ff8ba7 50%, #ffd1dc 100%);
+            color: white;
+            padding: 60px 20px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            margin-bottom: 40px;
+            animation: fadeIn 1.5s ease-in-out;
+        }
+        .hero img {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 15px;
+            border: 3px solid white;
+        }
+        .hero h1 {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 10px;
+        }
+        .hero h2 {
+            font-size: 20px;
+            font-weight: 500;
+            color: #fff;
+            margin-top: 0;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        </style>
+
+        <div class="hero">
+            <img src="https://raw.githubusercontent.com/Stagiaire2023GayeAlioune/Mon_application_AutoML/master/dv_lottery.jpg" alt="Alioune Gaye">
+            <h1>Alioune Gaye</h1>
+            <h2>Data Scientist | Consultant | Full-Stack AI Developer</h2>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # --- Animation machine à écrire cyclique ---
+    st.markdown("""
+        <style>
+        .typewriter-container {
+            width: 100%;
+            text-align: center;
+            font-size: 22px;
+            font-weight: 600;
+            color: #f25287;
+            margin-top: -20px;
+            height: 35px;
+        }
+        .typewriter-text {
+            display: inline-block;
+            border-right: 3px solid #f25287;
+            white-space: nowrap;
+            overflow: hidden;
+            animation: typing 3s steps(40, end), blink .8s step-end infinite;
+        }
+        @keyframes typing { from { width: 0; } to { width: 100%; } }
+        @keyframes blink { 50% { border-color: transparent; } }
+        </style>
+
+        <div class="typewriter-container">
+            <span id="typewriter" class="typewriter-text"></span>
+        </div>
+
+        <script>
+        const texts = [
+            "Data Science 💡",
+            "Développement Web 🌐",
+            "Intelligence Artificielle 🤖",
+            "Automatisation & Analyse de données 📊"
+        ];
+        let index = 0, charIndex = 0, currentText = "", isDeleting = false;
+        const element = document.getElementById("typewriter");
+        function type() {
+            const fullText = texts[index];
+            currentText = isDeleting ? fullText.substring(0, charIndex--) : fullText.substring(0, charIndex++);
+            element.textContent = currentText;
+            if (!isDeleting && charIndex === fullText.length) setTimeout(() => isDeleting = true, 1000);
+            else if (isDeleting && charIndex === 0) { isDeleting = false; index = (index + 1) % texts.length; }
+            setTimeout(type, isDeleting ? 60 : 120);
+        }
+        window.addEventListener('load', type);
+        </script>
+    """, unsafe_allow_html=True)
+
+    # --- Présentation ---
+    st.markdown("""
+    <div style="text-align:center; margin-top:25px;">
+    Je conçois et déploie des **solutions data et web intelligentes** alliant **analyse de données**, **intelligence artificielle**, 
+    **automatisation** et **développement full-stack** pour accompagner la transformation numérique des entreprises.
+    </div>
+    """, unsafe_allow_html=True)
+
+    # --- Services ---
+    st.markdown("### 🌟 Mes domaines d’expertise")
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("""<div class="service-box"><div class="emoji">📈</div><h3>Data Analytics & BI</h3><p>Nettoyage, modélisation et visualisation de données pour transformer les KPIs en décisions actionnables.</p></div>""", unsafe_allow_html=True)
+    with col2:
+        st.markdown("""<div class="service-box"><div class="emoji">🤖</div><h3>IA Générative & Prédictive</h3><p>LLM, RAG, OCR et modèles ML/DL pour automatiser les tâches métier et améliorer la performance opérationnelle.</p></div>""", unsafe_allow_html=True)
+    with col3:
+        st.markdown("""<div class="service-box"><div class="emoji">⚙️</div><h3>API & Automatisation</h3><p>Conception d'API robustes et workflows automatisés (CRON, workers, intégrations tierces, notifications).</p></div>""", unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("""<div class="service-box"><div class="emoji">💻</div><h3>Développement Backend</h3><p>Node.js, Express, TypeScript, Django, PostgreSQL/SQL Server, authentification sécurisée et services temps réel.</p></div>""", unsafe_allow_html=True)
+    with col2:
+        st.markdown("""<div class="service-box"><div class="emoji">🎨</div><h3>Frontend Web & Mobile</h3><p>React, Next.js, Vite, Tailwind, shadcn/ui, React Native, Expo et Flutter pour des expériences fluides sur web, Android et iOS.</p></div>""", unsafe_allow_html=True)
+    with col3:
+        st.markdown("""<div class="service-box"><div class="emoji">🧩</div><h3>Intégrations Métier</h3><p>WhatsApp, OAuth, Google APIs, SendGrid/Nodemailer, paiements (Stripe, PayPal, Wave), PDF/CSV/FEC/SEPA et outils SaaS.</p></div>""", unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("""<div class="service-box"><div class="emoji">📊</div><h3>Dashboards & Pilotage</h3><p>Power BI, Streamlit et dashboards web sur mesure pour suivre ventes, productivité, recrutement et finance.</p></div>""", unsafe_allow_html=True)
+    with col2:
+        st.markdown("""<div class="service-box"><div class="emoji">🗂️</div><h3>Architecture Data</h3><p>Conception de schémas, migrations, ETL, qualité des données et optimisation SQL pour des systèmes fiables.</p></div>""", unsafe_allow_html=True)
+    with col3:
+        st.markdown("""<div class="service-box"><div class="emoji">🎓</div><h3>Formation & Mentorat</h3><p>Accompagnement sur mesure en développement full-stack, data/IA, bonnes pratiques projet et montée en compétence équipe.</p></div>""", unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("""<div class="service-box"><div class="emoji">🏢</div><h3>Solutions CRM Métier</h3><p>Conception de CRM adaptés au terrain : prospects, ventes, commissions, recrutement, facturation et suivi opérationnel.</p></div>""", unsafe_allow_html=True)
+    with col2:
+        st.markdown("""<div class="service-box"><div class="emoji">☁️</div><h3>Cloud, DevOps & Qualité</h3><p>CI/CD, conteneurisation, monitoring, sécurité, performance et fiabilisation des applications en production.</p></div>""", unsafe_allow_html=True)
+    with col3:
+        st.markdown("""<div class="service-box"><div class="emoji">🛠️</div><h3>Conseil & Cadrage Produit</h3><p>Audit fonctionnel/technique, priorisation roadmap, définition MVP et architecture pour livrer plus vite avec impact.</p></div>""", unsafe_allow_html=True)
+
+    # Réalisations récentes
+    st.markdown("### 🚀 Réalisations récentes")
+    st.markdown("""
+    - **CRM Synergie Marketing Group** : conception d'un CRM métier complet pour piloter le cycle commercial (prospects, clients, ventes, commissions, suivi opérationnel) avec une architecture moderne **Node.js + React + PostgreSQL + WebSocket**.  
+    - **API OCR & LLM Immobilier** : développement d'une API intelligente d'extraction, de validation et de structuration de documents administratifs (CNI, bulletins, contrats) pour réduire le temps de traitement et fiabiliser les dossiers.  
+    - **Agent IA Juridique Multilingue** : mise en place d'un assistant IA français/arabe basé sur un pipeline **RAG (OpenAI + FAISS)**, capable d'interroger une base documentaire interne et de fournir des réponses contextuelles exploitables.  
+    """)
+
+# -----------------------------------------------------
+# PAGE 2 : À PROPOS DE MOI
+# -----------------------------------------------------
+elif page == "À propos de moi":
+    st.markdown("<h1 style='text-align:center;'>À propos de moi</h1>", unsafe_allow_html=True)
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        st.image("dv_lottery.jpg", use_container_width=True)
+    with col2:
+        st.markdown("""
+        Je suis **Alioune Gaye**, Data Scientist, statisticien et développeur full-stack orienté produits IA, automatisation métier et plateformes web/mobiles.  
+        J'interviens de bout en bout : cadrage du besoin, architecture technique, développement, déploiement et amélioration continue.
         
-if __name__ == "__main__":
-     main()
+        Mon objectif est de transformer la donnée en valeur métier à travers des solutions concrètes, robustes, performantes et évolutives.
+        """)
+    st.markdown("### 🎓 Éducation")
+    st.markdown("""
+    - **Master en Statistique, Modélisation et Science des données** – Université Claude Bernard Lyon 1 (Bac +5)
+    - **Formation Développeur Full-Stack** : conception d'applications web, API, bases de données, intégration et bonnes pratiques de production
+    """)
 
-st.markdown('<h1 style="text-align: center;">Prédiction</h1>', unsafe_allow_html=True)
+    st.markdown("### 🧪 Expérience de fin d'études (UCBL)")
+    st.image("LOGO.png", caption="Institut Lumière Matière", width=220)
+    st.markdown("""
+    - **Cadre :** stage de fin d'études de Master 2 SMSD réalisé au laboratoire **Institut Lumière Matière (ILM)**, au sein de l'équipe **FENNEC** (Villeurbanne, Rhone-Alpes, France)  
+    - **Encadrement :** tuteur entreprise **Matteo Martini** et tuteur école **Gabriela Ciuperca**  
+    - **Sujet :** validation d'une approche innovante combinant **fluorescence en temps résolu (TRF)** et **intelligence artificielle** pour la surveillance en temps réel des polluants dans les effluents industriels et municipaux  
+    - **Contributions clés :** préparation/analyse des données spectrales, développement de pipelines **Machine Learning** et **Deep Learning (CNN)** pour l'identification et la quantification de polluants  
+    - **Outils mobilisés :** Python, R, Streamlit, méthodes de classification, automatisation de protocoles et industrialisation des expérimentations  
+    - **Impact :** obtention de résultats prometteurs pour l'identification/quantification des polluants et contribution à un dispositif d'aide à la décision environnementale en temps réel
+    """)
 
-def main():
-    file_to_predict = st.file_uploader("Choisir un fichier à prédire", type=['csv'])
+    st.markdown("### 🧭 Domaines d'intervention")
+    st.markdown("""
+    - Développement de plateformes métier (CRM, marketing automation, outils de pilotage)
+    - Industrialisation de workflows data/IA pour les équipes opérationnelles
+    - Intégration d'outils multicanaux (WhatsApp, réseaux sociaux, email, API tierces)
+    - Conception d'interfaces modernes orientées expérience utilisateur
+    - Structuration des données, reporting, dashboards et KPIs décisionnels
+    """)
 
-    if file_to_predict is not None:
-        df_to_predict = load_data(file_to_predict)
-        st.subheader("Résultats des prédictions")
-        def predict_quality(model, df):
-             predictions_data = predict_model(estimator = model, data = df)
-             return predictions_data
-    
-        model = load_model('best_model')
-        pred=predict_quality(model, df_to_predict)
-        st.dataframe(pred[pred.columns[-3:]].head())
-    else:
-        st.image("https://ilm.univ-lyon1.fr//images/slides/Germanium%20ILM.jpg")
+    st.markdown("### 💡 Compétences comportementales")
+    st.markdown("""
+    - Communication claire, esprit d'équipe et collaboration transverse  
+    - Rigueur, ownership, fiabilité en production  
+    - Capacité de vulgarisation, pédagogie et accompagnement des utilisateurs  
+    - Résolution de problèmes complexes et prise de décision orientée impact
+    """)
 
-if __name__ == "__main__":
-    main()
-from keras.models import load_model
-st.markdown('<h1 style="text-align: center;">Prédiction image 3D </h1>', unsafe_allow_html=True)
-model = load_model('model_final2.h5')
+    st.markdown("### 🧠 Compétences techniques")
+    st.markdown("""
+    - **IA & Data Science :** Machine Learning, Deep Learning, NLP, Vision, séries temporelles, RAG, embeddings (FAISS), OCR (Tesseract), OpenAI, Gemini  
+    - **Backend :** Node.js, Express, TypeScript, Django, sessions/auth, middleware métier, APIs REST  
+    - **Frontend Web :** React 18, Next.js, Vite, Tailwind CSS, shadcn/ui, Radix UI, TanStack Query  
+    - **Mobile :** React Native, Expo, Flutter (Android/iOS)  
+    - **Temps réel :** WebSocket, notifications, traitements asynchrones, workers, Bull/BullMQ  
+    - **Base de données :** PostgreSQL, SQL Server, MySQL, Drizzle ORM, modélisation de schémas, migrations  
+    - **Messaging & intégrations :** WhatsApp Web, OAuth, Google APIs/Calendar, SendGrid, Nodemailer, paiements Stripe/PayPal/Wave  
+    - **Documents & exports :** PDF/CSV/FEC/SEPA, docxtemplater, html2pdf, génération de rapports automatisés  
+    - **DevOps & qualité :** Git/GitHub, Docker, CI/CD, tests, logging, monitoring, optimisation des performances  
+    - **Automatisation :** CRON métiers, scripts Python, pipelines ETL et orchestration de tâches
+    """)
 
+    st.markdown("### 💻 Langages")
+    st.markdown("""
+    - **Production & IA :** Python, TypeScript, SQL  
+    - **Applications web :** JavaScript  
+    - **Analyse statistique :** R, Stata  
+    - **Programmation système :** C++
+    """)
 
-f=['A','A+D','D','E']
-from PIL import Image
-def preprocess_image(image_path, target_size=(224, 224)):
-    image = Image.open(image_path)
-    if image.mode == 'RGBA':
-        image = image.convert('RGB')
-    image = image.resize(target_size)
-    return np.array(image) / 255.0
+    st.markdown("### 📊 Outils de visualisation")
+    st.markdown("""
+    - **BI & reporting exécutif :** Power BI, Tableau  
+    - **Dashboards interactifs :** Streamlit, Shiny  
+    - **Analyse opérationnelle :** Excel (modélisation, suivi KPI, reporting)
+    """)
 
-def predict_class(model, image_path):
-    img = preprocess_image(image_path)
-    img = np.expand_dims(img, axis=0)
-    pred = model.predict(img)
-    index = np.argmax(pred)
-    f.sort()
-    pred_value = f[index]
-    return pred_value
+    st.markdown("### ☁️ Cloud & Collaboration")
+    st.markdown("""
+    - **Cloud :** Azure, Google Cloud Platform, AWS (S3)  
+    - **Versioning & qualité :** GitHub, revues de code, gestion de versions  
+    - **APIs & tests :** Postman  
+    - **Collaboration projet :** Notion, Jira
+    """)
 
-file = st.file_uploader("Entrer l'image", type=["jpg", "png"])
-if file is None:
-    st.text("entrer l'image à prédire")
-else:
-    label = predict_class(model, file)
-    st.image(file, use_column_width=True)
-    st.markdown("## Résultats de la prédiction ")
-    st.markdown("## Il s'agit du polluant")
-    st.write(label)
-st.image("https://ilm.univ-lyon1.fr//images/slides/SLIDER7.png")
+# -----------------------------------------------------
+# PAGE 3 : MES PROJETS
+# -----------------------------------------------------
+elif page == "Mes projets":
+    st.markdown("""
+    <style>
+    .projects-title {
+        text-align: center;
+        margin-bottom: 8px;
+    }
+    .projects-subtitle {
+        text-align: center;
+        color: #6b7280;
+        margin-bottom: 28px;
+    }
+    .project-section-title {
+        margin-top: 22px;
+        margin-bottom: 12px;
+    }
+    /* Uniformiser les visuels uniquement sur la page projets */
+    [data-testid="stImage"] img {
+        width: 100%;
+        height: 230px;
+        object-fit: cover;
+        border-radius: 14px;
+    }
+    [data-testid="stCaptionContainer"] {
+        margin-bottom: 8px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
+    st.markdown("<h1 class='projects-title'>Mes Projets</h1>", unsafe_allow_html=True)
+    st.markdown("<p class='projects-subtitle'>Portfolio structuré : Data/IA, produits digitaux et plateformes métier.</p>", unsafe_allow_html=True)
 
+    st.markdown("### 📊 Projets Data & IA", unsafe_allow_html=False)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.image("Alzeimer.PNG", caption="Détection Alzheimer", use_container_width=True)
+        st.markdown("""
+        <div class="project-box"><h3>Détection de la Maladie d'Alzheimer</h3>
+        <p>Deep Learning (VGG19, ResNet50) sur IRM pour détecter les stades de démence.</p>
+        <a href="https://view.officeapps.live.com/op/view.aspx?src=https://raw.githubusercontent.com/Stagiaire2023GayeAlioune/Mon_application_AutoML/refs/heads/master/Detection_Alzheimer_Deep_Learning.docx">Rapport</a></div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.image("cancer.PNG", caption="Cancer du Sein", use_container_width=True)
+        st.markdown("""
+        <div class="project-box"><h3>Détection du Cancer du Sein</h3>
+        <p>Classification échographique des masses mammaires (bénin, malin, normal).</p>
+        <a href="https://github.com/Stagiaire2023GayeAlioune/Mon_application_AutoML/blob/master/Rapport_Cancer_du_sein.pdf">Rapport</a></div>
+        """, unsafe_allow_html=True)
+    with col3:
+        st.image("carte.PNG", caption="Fraude Bancaire", use_container_width=True)
+        st.markdown("""
+        <div class="project-box"><h3>Détection de Fraude Bancaire</h3>
+        <p>Classification des transactions frauduleuses via modèles supervisés.</p>
+        <a href="https://github.com/Stagiaire2023GayeAlioune/Mon_application_AutoML/blob/master/Rapport_detection_fraude.pdf">Rapport</a></div>
+        """, unsafe_allow_html=True)
 
-import pandas as pd
-import numpy as np 
-import matplotlib.pyplot as plt;
-from scipy.optimize import curve_fit,fsolve
-from scipy.signal import savgol_filter
-from scipy import signal
-import sympy as sp 
-from scipy.integrate import quad
-import scipy.integrate as spi
-from sklearn import preprocessing
-from scipy import stats
-from sklearn.linear_model import LinearRegression
-from tkinter import *
-from tkinter import filedialog
-from sklearn.preprocessing import StandardScaler
-import statsmodels.api as sm
-import statsmodels.formula.api as smf
-from sklearn.preprocessing import StandardScaler 
-import seaborn as sns
-from sympy import symbols
-from sympy import cos, exp
-from sympy import lambdify
-import statsmodels.formula.api as smf
-from sympy import *
-import csv
-from scipy import optimize
-from sklearn.metrics import r2_score#pour calculer le coeff R2
-from sklearn.linear_model import RANSACRegressor
-from colorama import init, Style
-from termcolor import colored
-import streamlit as st
-st.markdown('<h1 style="text-align: center;">Quantification du  polluant</h1>', unsafe_allow_html=True)
-def cal_conc(x,y,z,h,Ca,Cd):
-    a=h/Ca
-    a1=z/Cd
-    C_A=(y-a1*x)/(1-a1*a)
-    C_D=(x-a*y)/(1-a1*a)
-    conc=pd.DataFrame([C_A,C_D])
-    conc.index=['C_A','C_D']
-    return(conc) 
-def find_delimiter(filename):
-    sniffer = csv.Sniffer()
-    with open(filename) as fp:
-        delimiter = sniffer.sniff(fp.read(5000)).delimiter
-    return delimiter
-def mono_exp(df,VAR):
-    #-------------Nettoyage du dataframe----------------#
-    for i in df.columns:
-        if (df[i].isnull()[0]==True):# On elimine les colonnes vides
-            del df[i];
-    df=df.dropna(axis=0);#On elimine les lignes contenant des na
-    df=df[1:];
-    df=df.astype(float); # On convertit les valeurs contenues dans les colonnes en float (à la place de string)
-    df=df[df[df.columns[0]]>=0.1]
-    ncol=(len(df.columns)) # nombre de colonnes
-    najout=(ncol/2)-3; # nombre d'ajouts en solution standard
-    #---------------------First step----------------------#
-    def f_decay(x,a,b,c):
-        return(c+a*np.exp(-x/b));
-    df1=pd.DataFrame(columns=['A'+VAR.split('/')[-1],'Tau'+VAR.split('/')[-1]]);
-    row=int(len(df.columns)/5)
-    row2=int(len(df.columns)/2)
-    for  i in range(int(ncol/2)):
-        x=df[df.columns[0]]; # temps
-        y=df[df.columns[(2*i)+1]]; # Intensités de fluorescence
-        popt,pcov=curve_fit(f_decay,x,y,bounds=(0, np.inf));
-        df1=df1.append({'A'+VAR.split('/')[-1] :popt[0] , 'Tau'+VAR.split('/')[-1] :popt[1]} , ignore_index=True)
-    return(df1)   
-def double_exp(df,VAR):
-    for i in df.columns:
-        if (df[i].isnull()[0]==True):# On elimine les colonnes vides
-            del df[i];
-    df=df.dropna(axis=0);#On elimine les lignes contenant des na
-    df=df[1:];
-    df=df.astype(float); # On convertit les valeurs contenues dans les colonnes en float (à la place de string)
-    df=df[df[df.columns[0]]>=0.1]
-    ncol=(len(df.columns)) # nombre de colonnes
-    najout=(ncol/2)-3; # nombre d'ajouts en solution standard
-    
-    #---------------------First step----------------------#
-    def f_decay(x,a1,T1,a2,T2,r):
-        return(r+a1*np.exp(-x/T1)+a2*np.exp(-x/T2));
-    
-    df1=pd.DataFrame(columns=['A'+VAR.split('/')[-1],'Tau'+VAR.split('/')[-1]]);
-    for i in range(int(ncol/2)):
-        x=df[df.columns[0]]; # temps
-        y=df[df.columns[(2*i)+1]]; # Intensités de fluorescence
-        y=list(y)
-        y0=max(y)#y[1]
-        popt,pcov=curve_fit(f_decay,x,y,bounds=(0.1,[y0,+np.inf,y0,+np.inf,+np.inf]));
-        tau=(popt[0]*(popt[1])**2+popt[2]*(popt[3])**2)/(popt[0]*(popt[1])+popt[2]*(popt[3]))
-        A=(popt[0]+popt[2])/2
-        df1=df1.append({'A'+VAR.split('/')[-1] :A , 'Tau'+VAR.split('/')[-1] :tau} , ignore_index=True);
-    return(df1)   
-def tri_exp(df,VAR):
-    for i in df.columns:
-        if (df[i].isnull()[0]==True): # On elimine les colonnes vides
-            del df[i];
-    df=df.dropna(axis=0); # On elimine les lignes qui contiennent des na;
-    df=df[1:];
-    df=df.astype(float); # On convertit les valeurs contenues dans les colonnes en float (à la place de string)
-    df=df[df[df.columns[0]]>=0.1]
-    ncol=(len(df.columns)) # nombre de colonnes
-    def f_decay(x,a1,b1,c,r): # Il s'agit de l'équation utilisée pour ajuster l'intensité de fluorescence en fonction du temps(c'est à dire la courbe de durée de vie)
-        return(a1*np.exp(-x/b1)+(a1/2)*np.exp(-x/(b1+1.177*c))+(a1/2)*np.exp(-x/(b1-1.177*c))+r)
-                                           
-    df2=pd.DataFrame(columns=["préexpo_"+VAR.split('/')[-1],"tau_"+VAR.split('/')[-1]]); # Il s'agit du dataframe qui sera renvoyé par la fonction
-    #### Ajustement des courbes de durée de vie de chaque solution en fonction du temps#### 
-    print('polluant '+VAR.split('/')[-1].split('.')[0])
-    row=int(len(df.columns)/5)
-    row2=int(len(df.columns)/2)
-    fig, axs = plt.subplots(nrows=3, ncols=row, figsize=(20, 20))
-    for ax, i in zip(axs.flat, range(int(ncol/2))):
-        x=df[df.columns[0]]; # temps
-        y=df[df.columns[(2*i)+1]]; # Intensités de fluorescence
-        y=list(y)
-        yo=max(y)#y[1]
-        bound_c=1
-        while True:
-            try:
-                popt,pcov=curve_fit(f_decay,x,y,bounds=(0,[yo,+np.inf,bound_c,+np.inf]),method='dogbox') # On utilise une regression non linéaire pour approximer les courbes de durée de vie  
-                #popt correspond aux paramètres a1,b1,c,r de la fonction f_decay de tels sorte que les valeurs de f_decay(x,*popt) soient proches de y (intensités de fluorescence)
-                break;
-            except ValueError:
-                bound_c=bound_c-0.05
-                print("Oops")
-        df2=df2.append({"préexpo_"+VAR.split('/')[-1]:2*popt[0],"tau_"+VAR.split('/')[-1]:popt[1]} , ignore_index=True);# Pour chaque solution , on ajoute la préexponentielle et la durée de vie tau à la dataframe
-    
-        ax.plot(x,y,label="Intensité réelle");
-        ax.plot(x,f_decay(x,*popt),label="Intensité estimée");
-        ax.set_title(" solution "+df.columns[2*i]);
-        ax.set_xlabel('Temps(ms)');
-        ax.set_ylabel('Intensité(p.d.u)');
-        plt.legend();
-    plt.show();
-    
-    return(df2)
-## regression avec linearregression
-def regression1(result,std,unk,ss,d):
-    concentration=pd.DataFrame(columns=['polyfit'])
-    col1, col2 ,col3,col4= st.columns(4)
-    col=[col1,col2,col3,col4]
-    for t in range(len(ss)): 
-        fig, ax = plt.subplots()
-        tau=result[result.columns[2*t+1]]
-        cc=tau;
-        y=np.array(cc); 
-        std=np.array(std)
-        conc=ss[t]*std/unk
-        x=conc;
-        n=len(x)
-        x=x[1:(n-1)]
-        y=y[1:(n-1)]
-        plt.scatter(x,y);
-        mymodel = np.poly1d(np.polyfit(x, y, d)) # polynome de degré 1
-        x=x.reshape(-1,1);
-        y_intercept = mymodel(0)
-        R3=r2_score(y, mymodel(x))
-        # tracer les courbes de calibérations 
-        print('\n',f"\033[031m {result.columns[2*t+1][2:]} \033[0m",'\n')
-        plt.plot(x, mymodel(x),'m',label='np.polyfit : R² = {}'.format(round(R3,2)))
-        plt.xlabel('Concentration solution standard(ppm)')
-        plt.ylabel('durée de vie(ms)');
-        plt.title('Courbe de calibration'+'du polluant '+result.columns[2*t+1][4:])
-        plt.legend();
-        col[t].pyplot(fig)
-        y_intercept = mymodel(0)
-        col[t].write("y_intercept")
-        col[t].write(y_intercept)
-        # Calcul des racines (x_intercept)
-        roots = np.roots(mymodel)
-        x_intercepts = [root for root in roots if np.isreal(root)]
-        x_inter=fsolve(mymodel,0)
-        col[t].write("x_intercept")
-        col[t].write(x_inter)
-        slope=mymodel.coef[0]
-        col[t].write("slope")
-        col[t].write(slope)
-        x_inter=fsolve(mymodel,0)
-        Cx=(y_intercept-tau[0])/slope
-        concentration=concentration.append({'polyfit':round(Cx,2)},ignore_index=True)
-    return(concentration)
-def fun(tau):
-    sum_k=1/tau
-    kch=-sum_k+sum_k[0]
-    return(sum_k,kch)
-def regression2(result,std,unk,ss,sum_kchel):
-    col1, col2 ,col3,col4= st.columns(4)
-    col=[col1,col2,col3,col4]
-    con_poly3=[]
-    con2=[]
-    for i in range(len(ss)):
-        fig, ax = plt.subplots()
-        tau=result[result.columns[2*i+1]]
-        cc=tau;
-        y=np.array(cc); 
-        std=np.array(std) 
-        conc=ss[i]*std/unk
-        x=conc;
-        n=len(x)
-        x=x[1:(n-1)]
-        kchel=sum_kchel[sum_kchel.columns[2*i+1]]
-        sum_k=sum_kchel[sum_kchel.columns[2*i+1]]
-        kchel=kchel[1:(n-1)]
-        mymodel = np.poly1d(np.polyfit(x, kchel, 3))
-        #st.write(f"\033[031m {result.columns[2*i+1][4:]} \033[0m")
-        plt.scatter(x, kchel)
-        plt.plot(x, mymodel(x),'m')
-        plt.xlabel('Concentration solution standard(ppm)');
-        plt.ylabel('nombre d\'ion chélaté ' );
-        plt.title('Courbe de calibration'+'du polluant '+result.columns[2*i+1][4:])
-        plt.legend();
-        col[i].pyplot(fig)
-        col[i].write(r2_score(kchel, mymodel(x)))
-        # Calcul de l'ordonnée à l'origine (y_intercept)
-        y_intercept = mymodel(0)
-        col[i].write("y_intercept")
-        col[i].write(y_intercept)
-        # Calcul des racines (x_intercept)
-        roots = np.roots(mymodel)
-        x_intercepts = [root for root in roots if np.isreal(root)]
-        x_inter=fsolve(mymodel,0)
-        con_poly3.append(x_inter)
-        col[i].write("x_intercept")
-        col[i].write(x_inter)
-        slope=mymodel.coef[0]
-        col[i].write("slope")
-        col[i].write(slope)
-        xinter=y_intercept/slope
-        con2.append(xinter)
-    return(con_poly3)
+    col1, col2 = st.columns(2)
+    with col1:
+        st.image("credi.jpg", caption="Analyse des Risques de Crédit", use_container_width=True)
+        st.markdown("""
+        <div class="project-box"><h3>Analyse des Risques de Crédit</h3>
+        <p>Scoring de solvabilité et prévision du risque client par ML.</p>
+        <a href="https://risquedecreditsclients.streamlit.app/">Application</a></div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.image("RH.PNG", caption="Dashboard RH", use_container_width=True)
+        st.markdown("""
+        <div class="project-box"><h3>Tableau de Bord RH</h3>
+        <p>Dashboard interactif pour analyser attrition, performance et démographie RH.</p>
+        <a href="https://applicationtableaudebordanalyserh.streamlit.app/">Application</a></div>
+        """, unsafe_allow_html=True)
 
+    st.markdown("### 📱 Projets plateformes & automatisation")
+    col1, col2 = st.columns(2)
+    with col1:
+        waaw_img1, waaw_img2 = st.columns(2)
+        with waaw_img1:
+            st.image("Capture d’écran 2026-05-28 094939.png", caption="WaaW - Connexion", use_container_width=True)
+        with waaw_img2:
+            st.image("PAGE d'acceuil.png", caption="WaaW - Accueil", use_container_width=True)
+        st.markdown("""
+        <div class="project-box"><h3>WaaW — Plateforme Social + WhatsApp</h3>
+        <p><strong>Vision :</strong> WaaW est une plateforme web qui permet à une entreprise de créer, organiser et diffuser du contenu marketing multicanal depuis un seul espace.</p>
+        <p><strong>Publication multi-réseaux :</strong> l'utilisateur prépare un message, ajoute des médias (image, vidéo, document, audio), sélectionne les canaux connectés puis lance la diffusion.</p>
+        <p><strong>Connexion des canaux :</strong> module OAuth pour lier WhatsApp, Telegram, Slack et d'autres réseaux, ensuite exploitables dans les campagnes.</p>
+        <p><strong>Focus WhatsApp :</strong> connexion WhatsApp Web par QR code, récupération des contacts/groupes, diffusion de messages promotionnels en masse et envoi avec pièces jointes.</p>
+        <p><strong>Pilotage :</strong> historique complet (filtrer, consulter, modifier, relancer un envoi échoué, supprimer/restaurer) et statistiques par réseau avec insights analytiques + export PDF.</p>
+        <p><strong>Création vidéo marketing :</strong> workflow guidé pour saisir l'offre, charger les médias, générer la vidéo, suivre la progression et publier le résultat final.</p>
+        <p><strong>Positionnement :</strong> outil d'automatisation marketing et de gestion de diffusion multicanale, avec un fort accent sur WhatsApp et la performance des campagnes.</p>
+        <p><a href="https://www.waaw.cloud/" target="_blank">Accéder à l'application WaaW</a></p></div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.image("veta.png", caption="Vetafrik - Page d'accueil", use_container_width=True)
+        st.markdown("""
+        <div class="project-box"><h3>Vetafrik — Site vitrine & serveur WhatsApp</h3>
+        <p><strong>Vision :</strong> Vetafrik est un projet orienté vitrine commerciale et prise de commande simple dans la nutrition animale.</p>
+        <p><strong>Objectif :</strong> présenter les produits, informer les éleveurs, générer des demandes commerciales et faciliter la commande via WhatsApp.</p>
+        <p><strong>Parcours utilisateur :</strong> découverte de la marque, consultation des produits par catégorie/espèce, lecture des conseils, ajout au panier puis validation de commande.</p>
+        <p><strong>Processus commande :</strong> après validation, la commande est transmise via un flux opérationnel WhatsApp.</p>
+        <p><strong>Fonction clé :</strong> génération automatique d'un bon de commande PDF (articles, quantités, total, devise), envoyé au client sur WhatsApp avec copie à l'équipe Vetafrik.</p>
+        <p><strong>Développement commercial :</strong> formulaires de contact et <em>devenir distributeur</em> pour soutenir la relation client et l'extension du réseau.</p>
+        <p><strong>Public cible :</strong> éleveurs, distributeurs potentiels et acteurs agro-élevage en Afrique de l'Ouest (notamment Sénégal et Côte d'Ivoire).</p>
+        <p><strong>Bénéfices métier :</strong> meilleure visibilité des produits, conversion simplifiée, standardisation des commandes (PDF + WhatsApp) et mise en relation plus fluide.</p>
+        <p><strong>Stack technique :</strong> Next.js/React/TypeScript/Tailwind (FR-EN), SQL Server pour les formulaires et serveur Node.js pour WhatsApp + génération PDF.</p>
+        <p><a href="https://vetafrik.com/fr" target="_blank">Accéder au site Vetafrik</a></p></div>
+        """, unsafe_allow_html=True)
 
+    api_col1, api_col2 = st.columns(2)
+    with api_col1:
+        st.image("api_ocr.png", caption="API OCR & LLM", use_container_width=True)
+        st.markdown("""
+        <div class="project-box"><h3>API OCR & LLM pour documents immobiliers</h3>
+        <p>Extraction automatique de données structurées à partir de PDF et images grâce à l’OCR et aux LLM.</p></div>
+        """, unsafe_allow_html=True)
+    with api_col2:
+        st.image("ai_juridique.png", caption="Agent IA Juridique", use_container_width=True)
+        st.markdown("""
+        <div class="project-box"><h3>Agent IA Juridique Multilingue</h3>
+        <p>Assistant IA bilingue (français/arabe) basé sur un pipeline RAG, embeddings FAISS et OpenAI pour répondre à des questions juridiques à partir de documents internes.</p></div>
+        """, unsafe_allow_html=True)
 
-Taux4=pd.DataFrame()
-def main():
-    global Taux4
-    uploaded_files = st.file_uploader("Choisir les fichiers csv ", accept_multiple_files=True)
-    st.image("https://ilm.univ-lyon1.fr//images/slides/CARROUSSEL-17.png")
-    unk = st.number_input("Volume unk")
-    ss1 = st.number_input("Solution standard",value=1, step=1, format="%d")
-    rev = st.number_input("Volume rev")
-    Ca = st.number_input("Concentration initiale de A",value=1, step=1, format="%d")
-    Cd = st.number_input("Concentration initiale de D",value=1, step=1, format="%d")
-    #std=[0,0,0.025,0.05,0.075,0.1,0.125,0.15,0.175,0.2,1]
-    #std=[0,0,0.025,0.05,0.075,0.1,0.125,0.2] # 06-06
-    #std=[0,0,0.025,0.05,0.075,0.1,0.125,0.2,1] 
-    #std=[0,0,0.025,0.05,0.075,0.1,0.125,0.2,1.7]
-    std=[0,0,0.025,0.05,0.075,0.1,0.125,0.15,0.175,0.2,1] # Volume standard 07-06 , 12-06
-    #std=[0,0,0.05,0.075,0.1,0.125,0.15,0.175,0.2,0.5,1] # Volume standard 08-06 
-    #std=[0,0,0.05,0.075,0.1,0.125,0.15,0.175,0.2,1] # 09-06
-    #std=[0,0,0.025,0.075,0.125,0.2,0.5,0.7,1,1.5,4] # Volume standard 20-06 , 21-06
-    # Calculer ss en fonction de ss1
-    ss = [ss1] * 4
-    if uploaded_files is not None:
-            col5,col6,col7=st.columns(3)
-            if col5.button("Méthode mono_exponentielle"):
-                for uploaded_file in uploaded_files:
-                       df = pd.read_csv(uploaded_file, delimiter="\t")
-                       Q=mono_exp(df,uploaded_file.name)
-                       T=pd.concat([Taux4,Q], axis=1)
-                       Taux4=T
-                Taux=Taux4
-                sum_kchel1=pd.DataFrame() # gaussienne
-                sum_kchel2=pd.DataFrame()# double exp
-                sum_kchel3=pd.DataFrame() # mono exp
-                for j in range(4):
-                    tt3=Taux4[Taux4.columns[2*j+1]]
-                    s_k=pd.DataFrame(fun(tt3))
-                    s_k=s_k.T
-                    s_k.columns=['sum_k'+Taux.columns[2*j+1].split('_')[-1],'kchel'+Taux.columns[2*j+1].split('_')[-1]]
-                    sum_kchel3=pd.concat([sum_kchel3,s_k],axis=1)
-                st.markdown('## <h1 style="text-align: center;"> Les valeurs de Taux et la pré_exponentielle</h1>',unsafe_allow_html=True) 
-                st.write(Taux4.style.background_gradient(cmap="Greens")) 
-                st.markdown('## <h1 style="text-align: center;">Calcul de la concentration en fonction de durée de vie</h1>',unsafe_allow_html=True) 
-                st.markdown('## <h1 style="text-align: center;"> Resultats de la regression linéaire</h1>',unsafe_allow_html=True)
-                col1,col2=st.columns(2)
-                concentration4=regression1(Taux4,std,unk,ss,1) 
-                col1.write(concentration4)
-                polyfit=concentration4[concentration4.columns[0]]
-                r2=cal_conc(*polyfit,Ca,Cd)
-                col2.write(r2.style.background_gradient(cmap="Greens"))
-                st.markdown('## <h1 style="text-align: center;"> Resultats de la regression non linéaire</h1>',unsafe_allow_html=True)
-                col1,col2=st.columns(2)
-                concentration4=regression1(Taux4,std,unk,ss,3) 
-                col1.write(concentration4)
-                polyfit=concentration4[concentration4.columns[0]]
-                r2=cal_conc(*polyfit,Ca,Cd)
-                col2.write(r2.style.background_gradient(cmap="Greens"))
+    st.markdown("### 🧾 Plateforme CRM métier")
+    crm_col1, crm_col2 = st.columns([1, 1.3])
+    with crm_col1:
+        st.image("crm.png", caption="CRM - Page d'accueil", use_container_width=True)
+    with crm_col2:
+        st.markdown("""
+        <div class="project-box"><h3>CRM Métier Full-Stack — Vente Terrain / Télécom (Free)</h3>
+        <p><strong>Utilité :</strong> centraliser toute l'activité commerciale dans un seul outil, couvrir le cycle complet client (prospect -> vente -> installation -> facturation) et automatiser les commissions (CVD, MLM, CAE, CPC) avec traçabilité/audit.</p>
+        <p><strong>Application concrète :</strong> gestion clients/prospects, détection des doublons, suivi des tâches, pilotage vendeurs/performances/projections et tunnel de recrutement multi-étapes (inscription, formation, attestation, contrat, finalisation).</p>
+        <p><strong>Opérations financières :</strong> facturation/comptabilité (TVA, livres, rapprochement), verrouillage des factures, exports PDF/CSV/FEC/SEPA et conformité fiscale.</p>
+        <p><strong>Collaboration :</strong> messagerie interne, passation de dossiers, bibliothèque de documents partagés, notifications automatiques et CRON métiers.</p>
+        <p><strong>Public cible :</strong> administrateurs, commerciaux, recruteurs/managers MLM et clients finaux (module parrainage avec espace sécurisé).</p>
+        <p><strong>Stack frontend :</strong> React 18 + TypeScript, Vite, Wouter, TailwindCSS, shadcn/ui (Radix), TanStack Query, React Hook Form + Zod.</p>
+        <p><strong>Stack backend :</strong> Node.js, Express, TypeScript, sessions (<code>express-session</code>) et middleware métier.</p>
+        <p><strong>Données & sécurité :</strong> PostgreSQL + Drizzle ORM/Kit, authentification session, rôles/permissions, cookies sécurisés, reset password.</p>
+        <p><strong>Temps réel & intégrations :</strong> WebSocket, Daily (visioconf), Google APIs/Calendar, email (Nodemailer/SendGrid), OCR/IA (Gemini, OpenAI, Tesseract), génération PDF/CSV/SEPA.</p>
+        <p><strong>Fonctionnalités majeures :</strong> CRM avancé, gestion stock/cartes SIM, commissions multi-systèmes, facturation admin, comptabilité assistée IA, recrutement complet, parrainage vendeur/client et analytics comportementales.</p></div>
+        """, unsafe_allow_html=True)
 
-
-                st.markdown('## <h1 style="text-align: center;">Calcul de la concentration en fonction de nombre d\'ion chélaté </h1>',unsafe_allow_html=True) 
-                st.write(sum_kchel3.style.background_gradient(cmap="Greens")) 
-                st.markdown('## <h1 style="text-align: center;"> Resultats de la regression non linéaire </h1>',unsafe_allow_html=True)
-                col1,col2=st.columns(2)
-                concentrationC4=regression2(Taux4,std,unk,ss,sum_kchel3)
-                concen =pd.DataFrame(concentrationC4)
-                serie=['s1','s2','s3','s4']
-                concen.index=serie
-                col1.dataframe(concen)
-                r1=cal_conc(*concentrationC4,Ca,Cd)
-                col2.dataframe(r1.style.background_gradient(cmap="Greens"))
-                    
-                st.markdown('## <h1 style="text-align: center;"> Resultats de la regression linéaire</h1>',unsafe_allow_html=True)
-                col1,col2=st.columns(2)
-                concentration4=regression1(sum_kchel3,std,unk,ss,1) 
-                col1.write(concentration4)
-                polyfit=concentration4[concentration4.columns[0]]
-                r2=cal_conc(*polyfit,Ca,Cd)
-                col2.write(r2.style.background_gradient(cmap="Greens"))
-
-    
-            if col6.button("Méthode double_exponentielle"):
-                for uploaded_file in uploaded_files:
-                       df = pd.read_csv(uploaded_file, delimiter="\t")
-                       Q=double_exp(df,uploaded_file.name)
-                       T=pd.concat([Taux4,Q], axis=1)
-                       Taux4=T
-                Taux=Taux4
-                sum_kchel1=pd.DataFrame() # gaussienne
-                sum_kchel2=pd.DataFrame()# double exp
-                sum_kchel3=pd.DataFrame() # mono exp
-                for j in range(4):
-                    tt3=Taux4[Taux4.columns[2*j+1]]
-                    s_k=pd.DataFrame(fun(tt3))
-                    s_k=s_k.T
-                    s_k.columns=['sum_k'+Taux.columns[2*j+1].split('_')[-1],'kchel'+Taux.columns[2*j+1].split('_')[-1]]
-                    sum_kchel3=pd.concat([sum_kchel3,s_k],axis=1)
-                st.markdown('## <h1 style="text-align: center;"> Les valeurs de Taux et la pré_exponentielle</h1>',unsafe_allow_html=True)
-                st.write(Taux4.style.background_gradient(cmap="Blues")) 
-                st.markdown('## <h1 style="text-align: center;">Calcul de la concentration en fonction de durée de vie</h1>',unsafe_allow_html=True) 
-                st.markdown('## <h1 style="text-align: center;"> Resultats de la regression linéaire</h1>',unsafe_allow_html=True)
-                col1,col2=st.columns(2)
-                concentration4=regression1(Taux4,std,unk,ss,1) 
-                col1.write(concentration4)
-                polyfit=concentration4[concentration4.columns[0]]
-                r2=cal_conc(*polyfit,Ca,Cd)
-                col2.write(r2.style.background_gradient(cmap="Greens"))
-                st.markdown('## <h1 style="text-align: center;"> Resultats de la regression linéaire</h1>',unsafe_allow_html=True)
-                col1,col2=st.columns(2)
-                concentration4=regression1(Taux4,std,unk,ss,3) 
-                col1.write(concentration4)
-                polyfit=concentration4[concentration4.columns[0]]
-                r2=cal_conc(*polyfit,Ca,Cd)
-                col2.write(r2.style.background_gradient(cmap="Blues"))
-
-                st.markdown('## <h1 style="text-align: center;">Calcul de la concentration en fonction de nombre d\'ion chélaté </h1>',unsafe_allow_html=True) 
-                st.write(sum_kchel3.style.background_gradient(cmap="Blues")) 
-                st.markdown('## <h1 style="text-align: center;"> Resultats de la regression non linéaire</h1>',unsafe_allow_html=True)
-                col1,col2=st.columns(2)
-                concentrationC4=regression2(Taux4,std,unk,ss,sum_kchel3)
-                concen =pd.DataFrame(concentrationC4)
-                serie=['s1','s2','s3','s4']
-                concen.index=serie
-                col1.dataframe(concen)
-                r1=cal_conc(*concentrationC4,Ca,Cd)
-                col2.dataframe(r1.style.background_gradient(cmap="Blues"))
-                st.markdown('## <h1 style="text-align: center;"> Resultats de la regression linéaire</h1>',unsafe_allow_html=True)
-                col1,col2=st.columns(2)
-                concentration4=regression1(sum_kchel3,std,unk,ss,1) 
-                col1.write(concentration4)
-                polyfit=concentration4[concentration4.columns[0]]
-                r2=cal_conc(*polyfit,Ca,Cd)
-                col2.write(r2.style.background_gradient(cmap="Blues"))
-            if col7.button("Méthode gaussienne "):
-                for uploaded_file in uploaded_files:
-                       df = pd.read_csv(uploaded_file, delimiter="\t")
-                       Q=tri_exp(df,uploaded_file.name)
-                       T=pd.concat([Taux4,Q], axis=1)
-                       Taux4=T
-                Taux=Taux4
-                sum_kchel1=pd.DataFrame() # gaussienne
-                sum_kchel2=pd.DataFrame()# double exp
-                sum_kchel3=pd.DataFrame() # mono exp
-                for j in range(4):
-                    tt3=Taux4[Taux4.columns[2*j+1]]
-                    s_k=pd.DataFrame(fun(tt3))
-                    s_k=s_k.T
-                    s_k.columns=['sum_k'+Taux.columns[2*j+1].split('_')[-1],'kchel'+Taux.columns[2*j+1].split('_')[-1]]
-                    sum_kchel3=pd.concat([sum_kchel3,s_k],axis=1)
-                st.markdown('## <h1 style="text-align: center;"> Les valeurs de Taux et la pré_exponentielle</h1>',unsafe_allow_html=True)
-                st.write(Taux4.style.background_gradient(cmap="Purples")) 
-                st.markdown('## <h1 style="text-align: center;">Calcul de la concentration en fonction de durée de vie</h1>',unsafe_allow_html=True) 
-                st.markdown('## <h1 style="text-align: center;"> Resultats de la regression linéaire</h1>',unsafe_allow_html=True)
-                col1,col2=st.columns(2)
-                concentration4=regression1(Taux4,std,unk,ss,1) 
-                col1.write(concentration4)
-                polyfit=concentration4[concentration4.columns[0]]
-                r2=cal_conc(*polyfit,Ca,Cd)
-                col2.write(r2.style.background_gradient(cmap="Purples"))
-                st.markdown('## <h1 style="text-align: center;"> Resultats de la regression linéaire</h1>',unsafe_allow_html=True)
-                col1,col2=st.columns(2)
-                concentration4=regression1(Taux4,std,unk,ss,3) 
-                col1.write(concentration4)
-                polyfit=concentration4[concentration4.columns[0]]
-                r2=cal_conc(*polyfit,Ca,Cd)
-                col2.write(r2.style.background_gradient(cmap="Purples"))
-
-                st.markdown('## <h1 style="text-align: center;">Calcul de la concentration en fonction de nombre d\'ion chélaté </h1>',unsafe_allow_html=True) 
-                st.write(sum_kchel3.style.background_gradient(cmap="Purples")) 
-                st.markdown('## <h1 style="text-align: center;"> Resultats de la regression non linéaire</h1>',unsafe_allow_html=True)
-                col1,col2=st.columns(2)
-                concentrationC4=regression2(Taux4,std,unk,ss,sum_kchel3)
-                concen =pd.DataFrame(concentrationC4)
-                serie=['s1','s2','s3','s4']
-                concen.index=serie
-                col1.dataframe(concen)
-                r1=cal_conc(*concentrationC4,Ca,Cd)
-                col2.dataframe(r1.style.background_gradient(cmap="Purples"))
-                st.markdown('## <h1 style="text-align: center;"> Resultats de la regression linéaire</h1>',unsafe_allow_html=True)
-                col1,col2=st.columns(2)
-                concentration4=regression1(sum_kchel3,std,unk,ss,1) 
-                col1.write(concentration4)
-                polyfit=concentration4[concentration4.columns[0]]
-                r2=cal_conc(*polyfit,Ca,Cd)
-                col2.write(r2.style.background_gradient(cmap="Purples"))
-    
-    
-
-
-if __name__ == "__main__":
-    main()
-
+# -----------------------------------------------------
+# PIED DE PAGE
+# -----------------------------------------------------
+st.markdown("---")
+st.markdown("""
+<p style='text-align: center;'>
+    <strong>Mes contacts :</strong><br>
+    <a href='https://www.linkedin.com/in/alioune-gaye-1a5161172/' target='_blank' style='margin-right: 15px;'>
+        <img src='https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png' style='width:20px;'> LinkedIn
+    </a>
+    <a href='tel:+33763556982' style='margin-right: 15px;'>
+        <img src='https://upload.wikimedia.org/wikipedia/commons/6/6c/Phone_icon.png' style='width:20px;'> 0763556982
+    </a>
+    <a href='mailto:aliounegaye911@gmail.com'>
+        <img src='https://upload.wikimedia.org/wikipedia/commons/2/27/Android_Email_4.4_Icon.png' style='width:20px;'> aliounegaye911@gmail.com
+    </a><br><br>
+    © 2025 Data Workers – <strong>Alioune Gaye</strong>.
+</p>
+""", unsafe_allow_html=True)
