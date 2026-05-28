@@ -8,6 +8,27 @@ st.set_page_config(page_title="Data Workers", layout="wide")
 # Effet de transition globale entre les pages
 st.markdown("""
     <style>
+    :root {
+        --primary: #ec407a;
+        --primary-dark: #c2185b;
+        --accent: #7c4dff;
+        --bg-soft: #f7f9fc;
+        --text-main: #1f2937;
+        --text-muted: #6b7280;
+        --card-border: #e5e7eb;
+    }
+
+    .stApp {
+        background: linear-gradient(180deg, #ffffff 0%, var(--bg-soft) 100%);
+        color: var(--text-main);
+    }
+
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        max-width: 1250px;
+    }
+
     .main {
         opacity: 0;
         animation: fadeInAnimation ease 1.2s;
@@ -19,11 +40,86 @@ st.markdown("""
         100% { opacity: 1; transform: translateY(0); }
     }
 
+    /* Cartes services/projets */
+    .service-box, .project-box {
+        background: #ffffff;
+        border: 1px solid var(--card-border);
+        border-radius: 16px;
+        padding: 18px 18px 14px 18px;
+        margin-bottom: 14px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+        min-height: 170px;
+    }
+
+    .service-box h3, .project-box h3 {
+        margin-top: 4px;
+        margin-bottom: 10px;
+        color: #111827;
+        font-size: 1.1rem;
+    }
+
+    .service-box p, .project-box p {
+        color: var(--text-muted);
+        line-height: 1.5;
+        margin-bottom: 9px;
+        font-size: 0.96rem;
+    }
+
+    .emoji {
+        font-size: 1.45rem;
+        margin-bottom: 8px;
+    }
+
+    .project-box a {
+        color: var(--primary-dark);
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .project-box a:hover {
+        text-decoration: underline;
+    }
+
     /* Hover stylé pour les services et projets */
     .service-box:hover, .project-box:hover {
         transform: translateY(-5px);
-        box-shadow: 0 6px 15px rgba(242, 82, 135, 0.25);
-        transition: all 0.3s ease-in-out;
+        box-shadow: 0 12px 24px rgba(124, 77, 255, 0.16);
+        border-color: #d8ccff;
+        transition: all 0.25s ease-in-out;
+    }
+
+    /* Images plus professionnelles */
+    [data-testid="stImage"] img {
+        border-radius: 14px;
+        border: 1px solid #e8eaf0;
+        box-shadow: 0 5px 16px rgba(15, 23, 42, 0.10);
+    }
+
+    /* Titres */
+    h1, h2, h3 {
+        letter-spacing: -0.2px;
+    }
+
+    /* Sidebar */
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #141a2e 0%, #1f2940 100%);
+    }
+
+    section[data-testid="stSidebar"] * {
+        color: #f3f4f6 !important;
+    }
+
+    section[data-testid="stSidebar"] .stRadio > label {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 8px 10px;
+        border-radius: 10px;
+        margin-bottom: 6px;
     }
     </style>
 
@@ -44,6 +140,16 @@ st.markdown("""
 
 # Navigation latérale
 page = st.sidebar.radio("Navigation", ["Les services que je propose", "À propos de moi", "Mes projets"])
+st.sidebar.markdown("---")
+st.sidebar.markdown("""
+### Alioune Gaye
+**Data Scientist & Full-Stack AI Developer**
+
+Accompagnement des entreprises sur :
+- IA appliquée
+- Automatisation métier
+- Développement web & data products
+""")
 
 # -----------------------------------------------------
 # PAGE 1 : LES SERVICES QUE JE PROPOSE
@@ -291,6 +397,60 @@ elif page == "Mes projets":
     st.markdown("""
     <div class="project-box"><h3>Agent IA Juridique Multilingue</h3>
     <p>Assistant IA bilingue (français/arabe) basé sur un pipeline RAG, embeddings FAISS et OpenAI pour répondre à des questions juridiques à partir de documents internes.</p></div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("### 📱 Projets plateformes & automatisation")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.image("Capture d’écran 2026-05-28 094939.png", caption="WaaW - Page de connexion", use_container_width=True)
+        st.image("PAGE d'acceuil.png", caption="WaaW - Page d'accueil", use_container_width=True)
+        st.markdown("""
+        <div class="project-box"><h3>WaaW / nouveau/waaw — Plateforme Social + WhatsApp</h3>
+        <p><strong>Vision :</strong> <code>nouveau/waaw</code> est une plateforme web qui permet à une entreprise de créer, organiser et diffuser du contenu marketing multicanal depuis un seul espace.</p>
+        <p><strong>Publication multi-réseaux :</strong> l'utilisateur prépare un message, ajoute des médias (image, vidéo, document, audio), sélectionne les canaux connectés puis lance la diffusion.</p>
+        <p><strong>Connexion des canaux :</strong> module OAuth pour lier WhatsApp, Telegram, Slack et d'autres réseaux, ensuite exploitables dans les campagnes.</p>
+        <p><strong>Focus WhatsApp :</strong> connexion WhatsApp Web par QR code, récupération des contacts/groupes, diffusion de messages promotionnels en masse et envoi avec pièces jointes.</p>
+        <p><strong>Pilotage :</strong> historique complet (filtrer, consulter, modifier, relancer un envoi échoué, supprimer/restaurer) et statistiques par réseau avec insights analytiques + export PDF.</p>
+        <p><strong>Création vidéo marketing :</strong> workflow guidé pour saisir l'offre, charger les médias, générer la vidéo, suivre la progression et publier le résultat final.</p>
+        <p><strong>Positionnement :</strong> outil d'automatisation marketing et de gestion de diffusion multicanale, avec un fort accent sur WhatsApp et la performance des campagnes.</p>
+        <p><a href="https://www.waaw.cloud/" target="_blank">Accéder à l'application WaaW</a></p></div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.image("veta.png", caption="Vetafrik - Page d'accueil", use_container_width=True)
+        st.markdown("""
+        <div class="project-box"><h3>Vetafrik — Site vitrine & serveur WhatsApp</h3>
+        <p><strong>Vision :</strong> Vetafrik est un projet orienté vitrine commerciale et prise de commande simple dans la nutrition animale.</p>
+        <p><strong>Objectif :</strong> présenter les produits, informer les éleveurs, générer des demandes commerciales et faciliter la commande via WhatsApp.</p>
+        <p><strong>Parcours utilisateur :</strong> découverte de la marque, consultation des produits par catégorie/espèce, lecture des conseils, ajout au panier puis validation de commande.</p>
+        <p><strong>Processus commande :</strong> après validation, la commande est transmise via un flux opérationnel WhatsApp.</p>
+        <p><strong>Fonction clé :</strong> génération automatique d'un bon de commande PDF (articles, quantités, total, devise), envoyé au client sur WhatsApp avec copie à l'équipe Vetafrik.</p>
+        <p><strong>Développement commercial :</strong> formulaires de contact et <em>devenir distributeur</em> pour soutenir la relation client et l'extension du réseau.</p>
+        <p><strong>Public cible :</strong> éleveurs, distributeurs potentiels et acteurs agro-élevage en Afrique de l'Ouest (notamment Sénégal et Côte d'Ivoire).</p>
+        <p><strong>Bénéfices métier :</strong> meilleure visibilité des produits, conversion simplifiée, standardisation des commandes (PDF + WhatsApp) et mise en relation plus fluide.</p>
+        <p><strong>Stack technique :</strong> Next.js/React/TypeScript/Tailwind (FR-EN), SQL Server pour les formulaires et serveur Node.js pour WhatsApp + génération PDF.</p>
+        <p><a href="https://vetafrik.com/fr" target="_blank">Accéder au site Vetafrik</a></p></div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="project-box"><h3>R&D IA Vidéo — Stable Video Diffusion Pipeline</h3>
+    <p>Conception d'un pipeline IA vidéo (PyTorch, diffusers, transformers, Streamlit, edge-tts) pour génération et prototypage de contenus multimédias assistés par IA.</p>
+    <p><strong>Contexte infra :</strong> dépendances applicatives Node/Python et WhatsApp Web (Chrome), sans conteneurisation explicite détectée dans l'espace de travail.</p>
+    <p><strong>Note :</strong> coexistence de plusieurs variantes du projet (<code>waaw</code>, <code>nouveau/waaw</code>, <code>shapshap1/waaw</code>) suggérant des forks ou environnements parallèles.</p></div>
+    """, unsafe_allow_html=True)
+
+    st.image("crm.png", caption="CRM - Page d'accueil", use_container_width=True)
+    st.markdown("""
+    <div class="project-box"><h3>CRM Métier Full-Stack — Vente Terrain / Télécom (Free)</h3>
+    <p><strong>Utilité :</strong> centraliser toute l'activité commerciale dans un seul outil, couvrir le cycle complet client (prospect -> vente -> installation -> facturation) et automatiser les commissions (CVD, MLM, CAE, CPC) avec traçabilité/audit.</p>
+    <p><strong>Application concrète :</strong> gestion clients/prospects, détection des doublons, suivi des tâches, pilotage vendeurs/performances/projections et tunnel de recrutement multi-étapes (inscription, formation, attestation, contrat, finalisation).</p>
+    <p><strong>Opérations financières :</strong> facturation/comptabilité (TVA, livres, rapprochement), verrouillage des factures, exports PDF/CSV/FEC/SEPA et conformité fiscale.</p>
+    <p><strong>Collaboration :</strong> messagerie interne, passation de dossiers, bibliothèque de documents partagés, notifications automatiques et CRON métiers.</p>
+    <p><strong>Public cible :</strong> administrateurs, commerciaux, recruteurs/managers MLM et clients finaux (module parrainage avec espace sécurisé).</p>
+    <p><strong>Stack frontend :</strong> React 18 + TypeScript, Vite, Wouter, TailwindCSS, shadcn/ui (Radix), TanStack Query, React Hook Form + Zod.</p>
+    <p><strong>Stack backend :</strong> Node.js, Express, TypeScript, sessions (<code>express-session</code>) et middleware métier.</p>
+    <p><strong>Données & sécurité :</strong> PostgreSQL + Drizzle ORM/Kit, authentification session, rôles/permissions, cookies sécurisés, reset password.</p>
+    <p><strong>Temps réel & intégrations :</strong> WebSocket, Daily (visioconf), Google APIs/Calendar, email (Nodemailer/SendGrid), OCR/IA (Gemini, OpenAI, Tesseract), génération PDF/CSV/SEPA.</p>
+    <p><strong>Fonctionnalités majeures :</strong> CRM avancé, gestion stock/cartes SIM, commissions multi-systèmes, facturation admin, comptabilité assistée IA, recrutement complet, parrainage vendeur/client et analytics comportementales.</p></div>
     """, unsafe_allow_html=True)
 
 # -----------------------------------------------------
