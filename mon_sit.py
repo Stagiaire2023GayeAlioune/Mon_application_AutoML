@@ -330,7 +330,6 @@ elif page == "À propos de moi":
     st.image("LOGO.png", caption="Institut Lumière Matière", width=220)
     st.markdown("""
     - **Cadre :** stage de fin d'études de Master 2 SMSD réalisé au laboratoire **Institut Lumière Matière (ILM)**, au sein de l'équipe **FENNEC** (Villeurbanne, Rhone-Alpes, France)  
-    - **Encadrement :** tuteur entreprise **Matteo Martini** et tuteur école **Gabriela Ciuperca**  
     - **Sujet :** validation d'une approche innovante combinant **fluorescence en temps résolu (TRF)** et **intelligence artificielle** pour la surveillance en temps réel des polluants dans les effluents industriels et municipaux  
     - **Contributions clés :** préparation/analyse des données spectrales, développement de pipelines **Machine Learning** et **Deep Learning (CNN)** pour l'identification et la quantification de polluants  
     - **Outils mobilisés :** Python, R, Streamlit, méthodes de classification, automatisation de protocoles et industrialisation des expérimentations  
@@ -464,6 +463,22 @@ elif page == "Mes projets":
         <div class="project-box"><h3>Tableau de Bord RH</h3>
         <p>Dashboard interactif pour analyser attrition, performance et démographie RH.</p>
         <a href="https://applicationtableaudebordanalyserh.streamlit.app/">Application</a></div>
+        """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("""
+        <div class="project-box"><h3>SO2 et risque de cancer du poumon</h3>
+        <p>Étude sur la relation entre l'exposition au dioxyde de soufre (SO2) et le risque de cancer du poumon chez les travailleurs des usines de pâtes et papiers.</p>
+        <p>Projet combinant analyses statistiques, revue de littérature scientifique, gestion documentaire et prise en compte des enjeux éthiques liés aux données de santé.</p>
+        <p><a href="https://github.com/Stagiaire2023GayeAlioune/Mon_application_AutoML/blob/master/Rapport_Complet_Cancer_Poumon_SO2%202.pdf" target="_blank">Consulter le rapport</a></p></div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+        <div class="project-box"><h3>Analyse et typologie des pays</h3>
+        <p>Analyse des pays selon des indicateurs de développement durable à partir d'un jeu mondial de données.</p>
+        <p>Préparation des données, gestion des valeurs manquantes, normalisation, ACP, classification K-means, analyse des clusters et formulation de recommandations.</p>
+        <p><a href="https://github.com/Stagiaire2023GayeAlioune/Mon_application_AutoML/blob/master/Description_Projet_Developpement_Durable.docx" target="_blank">Voir la description du projet</a></p></div>
         """, unsafe_allow_html=True)
 
     st.markdown("### 📱 Projets plateformes & automatisation")
